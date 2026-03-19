@@ -1,0 +1,28 @@
+# virtualenv
+env/
+.venv/
+venv/
+
+# environment variables
+.env
+
+# database
+*.db
+
+# python cache
+__pycache__/
+*.pyc
+
+# media uploads
+media/
+
+# logs
+*.log
+
+# pytest / tooling
+.pytest_cache/
+.mypy_cache/
+
+# OS junk
+.DS_Store
+Thumbs.db
