@@ -86,7 +86,7 @@ You need an API key with active billing/quota.
 
 Lorewell currently uses a Page access token obtained from:
 
-`FB_me -> me/accounts -> FB_DJ page access token`
+`Core FB -> me/accounts -> Target FB Page  page access token`
 
 This token may expire, so manual refresh is currently part of the MVP workflow.
 
