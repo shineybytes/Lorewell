@@ -1,32 +1,27 @@
+import os
 import sys
 from pathlib import Path
+
+# Make sure app/ imports work during pytest collection.
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-import os
+# Tell config to load .env.test before app modules import settings.
+os.environ["PYTEST_RUNNING"] = "1"
+
 import pytest
 from fastapi.testclient import TestClient
 
 
 @pytest.fixture(autouse=True)
-def set_test_env(monkeypatch, tmp_path):
-    monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
-    monkeypatch.setenv("OPENAI_MODEL", "gpt-5.4-mini")
-    monkeypatch.setenv("PAGE_ACCESS_TOKEN", "test-page-token")
-    monkeypatch.setenv("INSTAGRAM_ACCOUNT_ID", "17841473771500345")
-    monkeypatch.setenv("GRAPH_API_VERSION", "v25.0")
-    monkeypatch.setenv("APP_BASE_URL", "https://example.test")
+def set_test_paths(monkeypatch, tmp_path):
+    # Keep tests isolated from each other.
     monkeypatch.setenv("MEDIA_DIR", str(tmp_path / "media"))
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
-    monkeypatch.setenv(
-        "DEFAULT_BRAND_VOICE",
-        "elegant, warm, story-driven, clear call to action",
-    )
 
 
 @pytest.fixture
 def client():
-    # Import after env vars are set
     from app.main import app
     return TestClient(app)
