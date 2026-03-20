@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, v0.2-future-unbreak]
+    branches: [main, v0.3-reels-and-things]
   pull_request:
 
 jobs:
