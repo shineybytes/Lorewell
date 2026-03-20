@@ -77,6 +77,23 @@ Set these in `.env`:
     
     DEFAULT_BRAND_VOICE=elegant, warm, story-driven, clear call to action
 ```
+
+#### Important Additional Notes about Environment
+
+Lorewell uses environment variables for API credentials and runtime settings.
+
+##### Required environment files:
+
+`.env`
+- Used for local development
+- Contains real tokens and secrets
+- Never commit this file
+
+`.env.test`
+- Used for automated tests and GitHub Actions
+- Contains dummy values
+- Safe to commit
+
 ## Important notes about tokens
 ### OpenAI
 
@@ -182,6 +199,26 @@ Example body:
 ```
 ### Upload asset
 `POST /events/{event_id}/upload`
+
+#### Media Upload Rules
+
+Lorewell validates media before sending it to the Instagram Graph API to prevent failed posts.
+
+Currently supported formats:
+
+Images
+- Format: `.jpg`, `.jpeg`
+- Max size: 8 MB
+
+Videos / Reels
+- Format: `.mp4`, `.mov`
+- Max size: 300 MB
+
+Files that do not meet these rules will be rejected at upload time.
+
+Note:
+These limits are based on current Instagram Graph API constraints.
+Additional validation (duration, bitrate, aspect ratio) may be added in future versions.
 
 ### Create scheduled post
 `POST /posts`
@@ -320,9 +357,6 @@ Current code still works, but should be migrated to:
 - FastAPI lifespan context
 - or `asynccontextmanager` startup pattern
 
-
----
-
 ### datetime.utcnow() deprecation
 
 Warnings indicate that `datetime.utcnow()` is deprecated in favor of timezone-aware datetimes.
@@ -346,3 +380,16 @@ SQLAlchemy warns about callable defaults using `datetime.utcnow()`.
 
 Future fix should update model defaults to timezone-aware functions.
 
+## Testing
+
+Run tests locally because do you really want network lag? `pytest -q`
+
+
+Tests use `.env.test`, not `.env`.
+
+This allows tests to run without real API tokens.
+
+GitHub Actions also uses `.env.test`.
+
+If tests fail due to missing environment variables,
+check that `.env.test` exists and contains the required fields.
