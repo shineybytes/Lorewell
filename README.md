@@ -188,13 +188,13 @@ Example body:
 ```
 {
   "title": "Lorewell Test Post",
-  "event_type": "dj set",
-  "location": "San Diego",
+  "event_type": "Lorewell Appreciation Fanship",
+  "location": "Convention Center",
   "event_date": "2026-03-18T17:30:00",
   "notes": "Testing Lorewell autopost pipeline",
-  "keywords": "dj, instagram, automation, test",
-  "brand_voice": "professional, energetic, nightlife, DJ branding",
-  "cta": "Follow @dreamtonethedj for more sets"
+  "keywords": "instagram, automation, test",
+  "brand_voice": "cheesy and queezy",
+  "cta": "Contribute to the mighty corvid"
 }
 ```
 ### Upload asset
@@ -339,7 +339,7 @@ ___***Do not commit real values from .env.***___
 Especially keep these out of git:
 ```
     OPENAI_API_KEY
-    META_ACCESS_TOKEN
+    PAGE_ACCESS_TOKEN
 ```
 
 If a token has been pasted into chat or logs, rotate it.
