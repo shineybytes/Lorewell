@@ -16,6 +16,10 @@ __pycache__/
 # media uploads
 media/
 
+# cache
+.pytest_cache/
+.mypy_cache/
+
 # logs
 *.log
 

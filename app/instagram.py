@@ -1,4 +1,5 @@
 from pathlib import Path
+import time
 import requests
 from app.config import settings
 
@@ -41,7 +42,9 @@ def publish_container(container_id: str) -> str:
         if r.ok:
             return r.json()["id"]
         last_error = f"{r.status_code} {r.text}"
-        if r.text in ["Media ID is not available", "not ready for publishing"]:
+        if "Media ID is not available" in r.text or "not ready for publishing" in r.text:
             time.sleep(5)
             continue
-    raise RuntimeError(f"Meta publish_container failed: {r.status_code} {r.text}")
+        raise RuntimeError(f"Meta publish_container failed: {last_error}")
+    raise RuntimeError(f"Meta publish_container failed after retries: {last_error}")
+    
