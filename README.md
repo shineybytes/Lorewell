@@ -306,3 +306,43 @@ Especially keep these out of git:
 ```
 
 If a token has been pasted into chat or logs, rotate it.
+
+## Technical debt / TODO
+
+The current version (v0.2) passes all tests, but there are a few warnings that should be resolved in a future version.
+
+### FastAPI startup event deprecation
+
+FastAPI warns that `@app.on_event("startup")` is deprecated and should be replaced with lifespan handlers.
+
+Current code still works, but should be migrated to:
+
+- FastAPI lifespan context
+- or `asynccontextmanager` startup pattern
+
+
+---
+
+### datetime.utcnow() deprecation
+
+Warnings indicate that `datetime.utcnow()` is deprecated in favor of timezone-aware datetimes.
+
+Current code uses naive UTC timestamps in:
+
+- scheduler
+- SQLAlchemy defaults
+- tests
+
+Future fix should:
+
+- switch to `datetime.now(datetime.UTC)`
+- make all stored timestamps UTC-aware
+- update scheduler comparisons
+- update tests accordingly
+
+### SQLAlchemy default timestamp warnings
+
+SQLAlchemy warns about callable defaults using `datetime.utcnow()`.
+
+Future fix should update model defaults to timezone-aware functions.
+
