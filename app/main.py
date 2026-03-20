@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.db import Base, engine, get_db
 from app.models import Event, Asset, ScheduledPost
+from app.media_validation import validate_media_file
 from app.schemas import EventCreate, PostCreate, GenerateRequest, ApproveRequest
 from app.ai import generate_caption_package
 from app.scheduler import start_scheduler
@@ -43,8 +44,13 @@ def upload_asset(event_id: int, file: UploadFile = File(...), db: Session = Depe
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
-    suffix = Path(file.filename).suffix.lower()
-    media_type = "video" if suffix in {".mp4", ".mov", ".m4v"} else "image"
+    contents = file.file.read()
+    file_size = len(contents)
+
+    media_type, validation_error = validate_media_file(file.filename, file_size)
+    if validation_error:
+        raise HTTPException(status_code=400, detail=validation_error)
+
     safe_name = Path(file.filename).name
     save_path = Path(settings.media_dir) / safe_name
 

@@ -35,12 +35,17 @@ def test_scheduler_processes_approved_posts_in_window(mocker):
     db_mock.query.side_effect = [posts_query, asset_query]
 
     mocker.patch("app.scheduler.SessionLocal", return_value=db_mock)
-    mocker.patch("app.scheduler.create_media_container", return_value="container123")
-    mocker.patch("app.scheduler.publish_container", return_value="published123")
+
+    create_mock = mocker.patch("app.scheduler.create_media_container", return_value="container123")
+    wait_mock = mocker.patch("app.scheduler.wait_until_container_ready")
+    publish_mock = mocker.patch("app.scheduler.publish_container", return_value="published123")
 
     from app.scheduler import process_due_posts
     process_due_posts()
 
+    create_mock.assert_called_once()
+    wait_mock.assert_called_once_with("container123")
+    publish_mock.assert_called_once_with("container123")
     assert fake_post.status == "published"
     assert fake_post.published_instagram_id == "published123"
     assert fake_post.error_message is None
@@ -63,6 +68,7 @@ def test_scheduler_marks_failed_on_publish_error(mocker):
 
     mocker.patch("app.scheduler.SessionLocal", return_value=db_mock)
     mocker.patch("app.scheduler.create_media_container", return_value="container123")
+    mocker.patch("app.scheduler.wait_until_container_ready")
     mocker.patch("app.scheduler.publish_container", side_effect=RuntimeError("publish failed"))
 
     from app.scheduler import process_due_posts

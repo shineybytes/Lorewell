@@ -3,7 +3,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy.orm import Session
 from app.db import SessionLocal
 from app.models import ScheduledPost, Asset
-from app.instagram import create_media_container, publish_container
+from app.instagram import create_media_container, publish_container, wait_until_container_ready
 
 scheduler = BackgroundScheduler()
 
@@ -39,6 +39,7 @@ def process_due_posts():
                     full_caption,
                     asset.media_type,
                 )
+                wait_until_container_ready(container_id)
                 published_id = publish_container(container_id)
 
                 post.status = "published"
