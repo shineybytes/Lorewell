@@ -96,3 +96,44 @@ def test_upload_rejects_oversized_video(client, mocker):
     finally:
         if media_path.exists():
             media_path.unlink()
+
+def test_upload_writes_nonempty_file(client):
+    event_resp = client.post(
+        "/events",
+        json={
+            "title": "Upload Test",
+            "event_type": "test",
+            "location": "here",
+            "event_date": "2026-03-25T18:00:00",
+            "notes": "test",
+            "keywords": "test",
+            "brand_voice": "neutral",
+            "cta": "none",
+        },
+    )
+    event_id = event_resp.json()["id"]
+
+    from pathlib import Path
+    media_path = Path("tests_temp_image.jpg")
+    media_path.write_bytes(b"nonempty image bytes")
+
+    try:
+        with media_path.open("rb") as f:
+            upload_resp = client.post(
+                f"/events/{event_id}/upload",
+                files={"file": ("tests_temp_image.jpg", f, "image/jpeg")},
+            )
+        assert upload_resp.status_code == 200
+
+        from app.db import SessionLocal
+        from app.models import Asset
+        db = SessionLocal()
+        try:
+            asset = db.query(Asset).filter(Asset.id == upload_resp.json()["asset_id"]).first()
+            assert asset is not None
+            assert Path(asset.file_path).stat().st_size > 0
+        finally:
+            db.close()
+    finally:
+        if media_path.exists():
+            media_path.unlink()

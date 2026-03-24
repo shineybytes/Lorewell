@@ -42,6 +42,7 @@ class ScheduledPost(Base):
     event_id: Mapped[int] = mapped_column(ForeignKey("events.id"))
     asset_id: Mapped[int] = mapped_column(ForeignKey("assets.id"))
     publish_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    publish_timezone: Mapped[str] = mapped_column(String(100), default="UTC")
     status: Mapped[str] = mapped_column(String(30), default="draft")
     caption_final: Mapped[str | None] = mapped_column(Text, nullable=True)
     hashtags_final: Mapped[str | None] = mapped_column(Text, nullable=True)
