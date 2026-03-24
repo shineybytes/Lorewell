@@ -393,3 +393,26 @@ GitHub Actions also uses `.env.test`.
 
 If tests fail due to missing environment variables,
 check that `.env.test` exists and contains the required fields.
+
+## Current scheduling behavior
+
+As of v0.4, scheduled posts accept:
+
+- `publish_at`: a local wall-clock datetime with no timezone suffix
+- `publish_timezone`: an IANA timezone name such as `America/Los_Angeles`
+
+Lorewell converts the provided local time into UTC before storing it internally.
+
+Important:
+- Do not include `Z` or any timezone offset in `publish_at` when also providing `publish_timezone`
+- Use the `/time/convert` helper endpoint if you want to verify the UTC conversion before scheduling
+
+Example:
+
+```json
+{
+  "event_id": 2,
+  "asset_id": 2,
+  "publish_at": "2026-03-23T15:40:00",
+  "publish_timezone": "America/Los_Angeles"
+}
