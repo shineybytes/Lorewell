@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy.orm import Session
 from app.db import SessionLocal
@@ -11,7 +11,7 @@ scheduler = BackgroundScheduler()
 def process_due_posts():
     db: Session = SessionLocal()
     try:
-        now = datetime.utcnow()
+        now = datetime.now(UTC).replace(tzinfo=None)
         grace_start = now - timedelta(minutes=5)
         posts = (
             db.query(ScheduledPost)
