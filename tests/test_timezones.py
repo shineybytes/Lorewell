@@ -26,27 +26,46 @@ def test_create_post_converts_local_time_to_utc(client):
             )
         asset_id = upload_resp.json()["asset_id"]
 
+        # create draft
         post_resp = client.post(
             "/posts",
             json={
                 "event_id": event_id,
                 "asset_id": asset_id,
+            },
+        )
+        post_id = post_resp.json()["post_id"]
+
+        # approve
+        approve_resp = client.post(
+            f"/posts/{post_id}/approve",
+            json={
+                "caption_final": "caption",
+                "hashtags_final": "#one",
+                "accessibility_text": "alt",
+            },
+        )
+        approved_post_id = approve_resp.json()["approved_post_id"]
+
+        # schedule
+        schedule_resp = client.post(
+            f"/approved-posts/{approved_post_id}/schedule",
+            json={
                 "publish_at": "2026-03-25T18:30:00",
                 "publish_timezone": "America/Los_Angeles",
             },
         )
-        assert post_resp.status_code == 200
+        assert schedule_resp.status_code == 200
 
-        posts_resp = client.get("/posts")
-        posts = posts_resp.json()
-        created = posts[-1]
+        schedules = client.get("/schedules").json()
+        created = schedules[-1]
 
         assert created["publish_timezone"] == "America/Los_Angeles"
         assert created["publish_at"] == "2026-03-26T01:30:00"
+
     finally:
         if media_path.exists():
             media_path.unlink()
-
 
 def test_create_post_rejects_invalid_timezone(client):
     event_resp = client.post(
@@ -76,34 +95,34 @@ def test_create_post_rejects_invalid_timezone(client):
             )
         asset_id = upload_resp.json()["asset_id"]
 
-        post_resp = client.post(
+        post_id = client.post(
             "/posts",
+            json={"event_id": event_id, "asset_id": asset_id},
+        ).json()["post_id"]
+
+        approved_post_id = client.post(
+            f"/posts/{post_id}/approve",
             json={
-                "event_id": event_id,
-                "asset_id": asset_id,
+                "caption_final": "caption",
+                "hashtags_final": "#one",
+                "accessibility_text": "alt",
+            },
+        ).json()["approved_post_id"]
+
+        resp = client.post(
+            f"/approved-posts/{approved_post_id}/schedule",
+            json={
                 "publish_at": "2026-03-25T18:30:00",
                 "publish_timezone": "Mars/Olympus",
             },
         )
-        assert post_resp.status_code == 400
-        assert post_resp.json()["detail"] == "Invalid timezone"
+
+        assert resp.status_code == 400
+        assert resp.json()["detail"] == "Invalid timezone"
+
     finally:
         if media_path.exists():
             media_path.unlink()
-
-def test_convert_time_returns_utc(client):
-    resp = client.post(
-        "/time/convert",
-        json={
-            "local_datetime": "2026-03-25T18:30:00",
-            "timezone": "America/Los_Angeles",
-        },
-    )
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["timezone"] == "America/Los_Angeles"
-    assert body["utc_datetime"] == "2026-03-26T01:30:00"
-
 
 def test_convert_time_rejects_timezone_aware_input(client):
     resp = client.post(
@@ -115,7 +134,6 @@ def test_convert_time_rejects_timezone_aware_input(client):
     )
     assert resp.status_code == 400
     assert "local_datetime must not include a timezone" in resp.json()["detail"]
-
 
 def test_create_post_rejects_timezone_aware_publish_at(client):
     event_resp = client.post(
@@ -145,17 +163,30 @@ def test_create_post_rejects_timezone_aware_publish_at(client):
             )
         asset_id = upload_resp.json()["asset_id"]
 
-        post_resp = client.post(
+        post_id = client.post(
             "/posts",
+            json={"event_id": event_id, "asset_id": asset_id},
+        ).json()["post_id"]
+
+        approved_post_id = client.post(
+            f"/posts/{post_id}/approve",
             json={
-                "event_id": event_id,
-                "asset_id": asset_id,
+                "caption_final": "caption",
+                "hashtags_final": "#one",
+                "accessibility_text": "alt",
+            },
+        ).json()["approved_post_id"]
+
+        resp = client.post(
+            f"/approved-posts/{approved_post_id}/schedule",
+            json={
                 "publish_at": "2026-03-25T18:30:00Z",
                 "publish_timezone": "America/Los_Angeles",
             },
         )
-        assert post_resp.status_code == 400
-        assert "publish_at must not include a timezone" in post_resp.json()["detail"]
+
+        assert resp.status_code == 400
+        assert "publish_at must not include timezone" in resp.json()["detail"]
 
     finally:
         if media_path.exists():

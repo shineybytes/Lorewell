@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, v0.4-Times-are-Changin]
+    branches: [main, v0.4.5-API-redesign-done-better]
   pull_request:
 
 jobs:
