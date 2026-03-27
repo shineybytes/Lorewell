@@ -14,13 +14,11 @@ class Event(Base):
     event_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     keywords: Mapped[str | None] = mapped_column(Text, nullable=True)
-    brand_voice: Mapped[str | None] = mapped_column(Text, nullable=True)
-    cta: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    vendors: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     assets = relationship("Asset", back_populates="event", cascade="all, delete-orphan")
     posts = relationship("Post", back_populates="event", cascade="all, delete-orphan")
-
 
 class Asset(Base):
     __tablename__ = "assets"
@@ -41,7 +39,7 @@ class Post(Base):
     primary_asset_id: Mapped[int] = mapped_column(ForeignKey("assets.id"))
 
     brand_voice: Mapped[str | None] = mapped_column(Text, nullable=True)
-    cta_hint: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cta_instruction: Mapped[str | None] = mapped_column(Text, nullable=True)
     generation_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     generated_caption_options: Mapped[str | None] = mapped_column(Text, nullable=True)

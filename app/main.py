@@ -51,8 +51,8 @@ def create_event(payload: EventCreate, db: Session = Depends(get_db)):
     return {"id": event.id}
 
 
-@app.post("/events/{event_id}/upload",
-          summary="Annotates to an event ID a media file",
+@app.post("/events/{event_id}/asset",
+          summary="Creates an asset associated with an event",
           description="This attaches either a photo or video compliant to Instagram restrictions to an event",
           response_description="The media ID and whether it is an image or video")
 def upload_asset(event_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
@@ -92,7 +92,7 @@ def create_post(payload: PostDraftCreate, db: Session):
         event_id=payload.event_id,
         primary_asset_id=payload.asset_id,
         brand_voice=payload.brand_voice,
-        cta_hint=payload.cta_hint,
+        cta_instruction=payload.cta_instruction,
         generation_notes=payload.generation_notes,
         status="draft"
     )

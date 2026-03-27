@@ -40,7 +40,7 @@ def test_create_post(client):
     try:
         with media_path.open("rb") as f:
             upload_resp = client.post(
-                f"/events/{event_id}/upload",
+                f"/events/{event_id}/asset",
                 files={"file": ("tests_temp_image.jpg", f, "image/jpeg")},
             )
         assert upload_resp.status_code == 200
@@ -95,7 +95,7 @@ def test_generate_post_stores_caption(client, mocker):
     try:
         with media_path.open("rb") as f:
             upload_resp = client.post(
-                f"/events/{event_id}/upload",
+                f"/events/{event_id}/asset",
                 files={"file": ("tests_temp_image.jpg", f, "image/jpeg")},
             )
         asset_id = upload_resp.json()["asset_id"]
@@ -150,7 +150,7 @@ def test_approve_post_changes_status(client):
     try:
         with media_path.open("rb") as f:
             upload_resp = client.post(
-                f"/events/{event_id}/upload",
+                f"/events/{event_id}/asset",
                 files={"file": ("tests_temp_image.jpg", f, "image/jpeg")},
             )
         asset_id = upload_resp.json()["asset_id"]

@@ -9,14 +9,12 @@ class EventCreate(BaseModel):
     event_date: datetime | None = None
     notes: str | None = None
     keywords: str | None = None
-    brand_voice: str | None = None
-    cta: str | None = None
 
 class PostDraftCreate(BaseModel):
     event_id: int | None = None
     asset_id: int
     brand_voice: str | None = None
-    cta_hint: str | None = None
+    cta_instruction: str | None = None
     generation_notes: str | None = None
 
 class ApprovePostRequest(BaseModel):

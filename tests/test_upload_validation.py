@@ -27,7 +27,7 @@ def test_upload_rejects_png(client):
     try:
         with media_path.open("rb") as f:
             response = client.post(
-                f"/events/{event_id}/upload",
+                f"/events/{event_id}/asset",
                 files={"file": ("tests_temp_image.png", f, "image/png")},
             )
         assert response.status_code == 400
@@ -46,7 +46,7 @@ def test_upload_accepts_jpeg(client):
     try:
         with media_path.open("rb") as f:
             response = client.post(
-                f"/events/{event_id}/upload",
+                f"/events/{event_id}/asset",
                 files={"file": ("tests_temp_image.jpg", f, "image/jpeg")},
             )
         assert response.status_code == 200
@@ -65,7 +65,7 @@ def test_upload_accepts_mp4(client):
     try:
         with media_path.open("rb") as f:
             response = client.post(
-                f"/events/{event_id}/upload",
+                f"/events/{event_id}/asset",
                 files={"file": ("tests_temp_video.mp4", f, "video/mp4")},
             )
         assert response.status_code == 200
@@ -88,7 +88,7 @@ def test_upload_rejects_oversized_video(client, mocker):
     try:
         with media_path.open("rb") as f:
             response = client.post(
-                f"/events/{event_id}/upload",
+                f"/events/{event_id}/asset",
                 files={"file": ("tests_temp_video.mp4", f, "video/mp4")},
             )
         assert response.status_code == 400
@@ -120,7 +120,7 @@ def test_upload_writes_nonempty_file(client):
     try:
         with media_path.open("rb") as f:
             upload_resp = client.post(
-                f"/events/{event_id}/upload",
+                f"/events/{event_id}/asset",
                 files={"file": ("tests_temp_image.jpg", f, "image/jpeg")},
             )
         assert upload_resp.status_code == 200

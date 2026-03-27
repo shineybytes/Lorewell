@@ -21,7 +21,7 @@ def test_create_post_converts_local_time_to_utc(client):
     try:
         with media_path.open("rb") as f:
             upload_resp = client.post(
-                f"/events/{event_id}/upload",
+                f"/events/{event_id}/asset",
                 files={"file": ("tests_temp_image.jpg", f, "image/jpeg")},
             )
         asset_id = upload_resp.json()["asset_id"]
@@ -90,7 +90,7 @@ def test_create_post_rejects_invalid_timezone(client):
     try:
         with media_path.open("rb") as f:
             upload_resp = client.post(
-                f"/events/{event_id}/upload",
+                f"/events/{event_id}/asset",
                 files={"file": ("tests_temp_image.jpg", f, "image/jpeg")},
             )
         asset_id = upload_resp.json()["asset_id"]
@@ -158,7 +158,7 @@ def test_create_post_rejects_timezone_aware_publish_at(client):
     try:
         with media_path.open("rb") as f:
             upload_resp = client.post(
-                f"/events/{event_id}/upload",
+                f"/events/{event_id}/asset",
                 files={"file": ("tests_temp_image.jpg", f, "image/jpeg")},
             )
         asset_id = upload_resp.json()["asset_id"]
