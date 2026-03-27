@@ -51,7 +51,6 @@ def test_create_post(client):
             json={
                 "event_id": event_id,
                 "asset_id": asset_id,
-                "publish_at": "2026-03-19T01:42:00",
             },
         )
         assert post_resp.status_code == 200
@@ -59,7 +58,6 @@ def test_create_post(client):
     finally:
         if media_path.exists():
             media_path.unlink()
-
 
 def test_generate_post_stores_caption(client, mocker):
     mocker.patch(
@@ -107,20 +105,23 @@ def test_generate_post_stores_caption(client, mocker):
             json={
                 "event_id": event_id,
                 "asset_id": asset_id,
-                "publish_at": "2026-03-19T01:42:00",
             },
         )
         post_id = post_resp.json()["post_id"]
 
-        generate_resp = client.post("/posts/generate", json={"post_id": post_id})
+        generate_resp = client.post(f"/posts/{post_id}/generate")
         assert generate_resp.status_code == 200
-        assert generate_resp.json()["caption_medium"] == "medium caption"
+
+        body = generate_resp.json()
+        assert body["caption_medium"] == "medium caption"
+        assert body["hashtags"] == ["#one", "#two"]
+        assert body["accessibility_text"] == "alt text"
 
         posts_resp = client.get("/posts")
         posts = posts_resp.json()
         saved = next(p for p in posts if p["id"] == post_id)
-        assert saved["caption_final"] == "medium caption"
-        assert saved["hashtags_final"] == "#one #two"
+
+        assert saved["status"] == "generated"
     finally:
         if media_path.exists():
             media_path.unlink()
@@ -159,7 +160,6 @@ def test_approve_post_changes_status(client):
             json={
                 "event_id": event_id,
                 "asset_id": asset_id,
-                "publish_at": "2026-03-19T01:42:00",
             },
         )
         post_id = post_resp.json()["post_id"]

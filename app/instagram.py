@@ -61,6 +61,7 @@ def wait_until_container_ready(container_id: str) -> None:
 
 
 def publish_container(container_id: str) -> str:
+    # raise Exception("Meta create_media_container failed: 400 test")
     url = f"https://graph.facebook.com/{settings.graph_api_version}/{settings.instagram_account_id}/media_publish"
     payload = {
         "creation_id": container_id,
