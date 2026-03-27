@@ -17,17 +17,17 @@ scheduler = BackgroundScheduler()
 
 
 def process_due_posts():
-    print("DEBUG scheduler tick")
+    # print("DEBUG scheduler tick")
     db: Session = SessionLocal()
-    print("DEBUG bound engine url:", db.get_bind().url)
-    print("DEBUG cwd:", os.getcwd())
-    print("DEBUG settings.database_url:", settings.database_url)
-    print("DEBUG resolved local lorewell.db:", Path("./lorewell.db").resolve())
+    # print("DEBUG bound engine url:", db.get_bind().url)
+    # print("DEBUG cwd:", os.getcwd())
+    # print("DEBUG settings.database_url:", settings.database_url)
+    # print("DEBUG resolved local lorewell.db:", Path("./lorewell.db").resolve())
     try:
         now = datetime.now(UTC).replace(tzinfo=None)
         grace_start = now - timedelta(minutes=5)
-        print(f"DEBUG database_url {settings.database_url}")
-        print(f"DEBUG now: {now}\nDEBUG grace_start: {grace_start}")
+        # print(f"DEBUG database_url {settings.database_url}")
+        # print(f"DEBUG now: {now}\nDEBUG grace_start: {grace_start}")
 
         schedules = (
             db.query(Schedule)
@@ -36,15 +36,15 @@ def process_due_posts():
             .filter(Schedule.publish_at >= grace_start)
             .all()
             )
-        all_scheduled = db.query(Schedule).filter(Schedule.status == "scheduled").all()
+        # all_scheduled = db.query(Schedule).filter(Schedule.status == "scheduled").all() # I was double checking that the scheduler was grabbing everything
 
-        print("DEBUG all scheduled:", " ".join([f"({s.id}, {s.publish_at}, {s.status})" for s in all_scheduled]))
-        print("DEBUG due scheduled:", " ".join([f"({s.id}, {s.publish_at}, {s.status})" for s in schedules]))
+        # print("DEBUG all scheduled:", " ".join([f"({s.id}, {s.publish_at}, {s.status})" for s in all_scheduled]))
+        # print("DEBUG due scheduled:", " ".join([f"({s.id}, {s.publish_at}, {s.status})" for s in schedules]))
 
-        print(f"DEBUG found {len(schedules)} schedules")
+        # print(f"DEBUG found {len(schedules)} schedules")
 
         for s in schedules:
-            print(f"DEBUG process schedule {s.id}: publish_at {s.publish_at}; status {s.status}")
+            # print(f"DEBUG process schedule {s.id}: publish_at {s.publish_at}; status {s.status}")
             try:
                 s.status = "publishing"
                 db.commit()
