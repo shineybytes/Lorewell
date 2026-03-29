@@ -12,7 +12,7 @@ class EventCreate(BaseModel):
     event_type: str | None = None
     location: str | None = None
     event_date: datetime | None = None
-    notes: str | None = None
+    recap: str | None = None
     keywords: str | None = None
     vendors: str | None = None
 
@@ -23,7 +23,7 @@ class EventResponse(BaseModel):
     event_type: str | None = None
     location: str | None = None
     event_date: datetime | None = None
-    notes: str | None = None
+    recap: str | None = None
     keywords: str | None = None
     vendors: str | None = None
 

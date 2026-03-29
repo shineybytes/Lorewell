@@ -6,7 +6,7 @@ def test_create_post_converts_local_time_to_utc(client):
         client,
         title="TZ Test Event",
         event_date="2026-03-25T18:00:00",
-        notes="timezone test",
+        recap="timezone test",
     )
     media_path = write_temp_file("tests_temp_image.jpg", b"fake jpeg bytes")
 
@@ -45,7 +45,7 @@ def test_create_post_rejects_invalid_timezone(client):
         client,
         title="TZ Invalid Event",
         event_date="2026-03-25T18:00:00",
-        notes="timezone test",
+        recap="timezone test",
     )
     media_path = write_temp_file("tests_temp_image.jpg", b"fake jpeg bytes")
 
@@ -92,7 +92,7 @@ def test_create_post_rejects_timezone_aware_publish_at(client):
         client,
         title="TZ Invalid Publish Event",
         event_date="2026-03-25T18:00:00",
-        notes="timezone test",
+        recap="timezone test",
     )
     media_path = write_temp_file("tests_temp_image.jpg", b"fake jpeg bytes")
 

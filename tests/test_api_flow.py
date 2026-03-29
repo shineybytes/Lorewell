@@ -9,7 +9,7 @@ def test_create_event(client):
             "event_type": "dj set",
             "location": "San Diego",
             "event_date": "2026-03-19T01:00:00",
-            "notes": "Test notes",
+            "recap": "Test recap",
             "keywords": "dj,test",
             "vendors": "Venue X",
         },

@@ -14,7 +14,7 @@ def test_upload_asset_auto_analyzes(client, mocker):
         client,
         title="Asset Test Event",
         event_date="2026-03-25T18:00:00",
-        notes="asset test",
+        recap="asset test",
     )
     media_path = write_temp_file("tests_temp_image.jpg", b"fake image bytes")
 
@@ -41,7 +41,7 @@ def test_approve_asset_stores_final_accessibility(client, mocker):
         client,
         title="Asset Approve Event",
         event_date="2026-03-25T18:00:00",
-        notes="asset test",
+        recap="asset test",
     )
     media_path = write_temp_file("tests_temp_image.jpg", b"fake image bytes")
 
@@ -76,7 +76,7 @@ def test_reapprove_asset_overwrites_final_accessibility(client, mocker):
         client,
         title="Asset Reapprove Event",
         event_date="2026-03-25T18:00:00",
-        notes="asset test",
+        recap="asset test",
     )
     media_path = write_temp_file("tests_temp_image.jpg", b"fake image bytes")
 
@@ -119,7 +119,7 @@ def test_reanalyze_asset_without_correction(client, mocker):
         client,
         title="Asset Reanalyze Event",
         event_date="2026-03-25T18:00:00",
-        notes="asset reanalyze test",
+        recap="asset reanalyze test",
     )
     media_path = write_temp_file("tests_temp_image.jpg", b"fake image bytes")
 
@@ -162,7 +162,7 @@ def test_reanalyze_asset_with_user_correction(client, mocker):
         client,
         title="Asset Correction Event",
         event_date="2026-03-25T18:00:00",
-        notes="asset correction test",
+        recap="asset correction test",
     )
     media_path = write_temp_file("tests_temp_video.mp4", b"fake mp4 bytes")
 

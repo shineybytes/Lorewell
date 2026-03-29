@@ -42,12 +42,14 @@ def _build_generation_prompt(
     event_type = event.event_type if event else ""
     location = event.location if event else ""
     event_date = event.event_date.isoformat() if event and event.event_date else ""
-    notes = event.notes if event else ""
+    recap = event.recap if event else ""
     keywords = event.keywords if event else ""
     vendors = event.vendors if event else ""
 
     asset_accessibility = asset.accessibility_text_final or asset.accessibility_text_generated or ""
     asset_visual_summary = asset.vision_summary_generated or ""
+
+    event_guidance = event.event_guidance if event else ""
 
     return f"""
 Generate a structured Instagram caption package for a single media asset.
@@ -58,8 +60,9 @@ Event context:
 - Location: {location}
 - Event date: {event_date}
 - Vendors: {vendors}
-- Notes: {notes}
+- Recap: {recap}
 - Keywords: {keywords}
+- Event Guidance: {event_guidance}
 
 Post generation context:
 - Brand voice: {brand_voice}

@@ -8,7 +8,7 @@ def create_event(
     event_type="dj set",
     location="San Diego",
     event_date="2026-03-19T01:00:00",
-    notes="Test notes",
+    recap="Test recap",
     keywords="dj,test",
     vendors="Venue X",
 ) -> int:
@@ -19,7 +19,7 @@ def create_event(
             "event_type": event_type,
             "location": location,
             "event_date": event_date,
-            "notes": notes,
+            "recap": recap,
             "keywords": keywords,
             "vendors": vendors,
         },

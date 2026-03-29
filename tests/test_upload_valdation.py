@@ -76,7 +76,7 @@ def test_upload_writes_nonempty_file(client):
         event_type="test",
         location="here",
         event_date="2026-03-25T18:00:00",
-        notes="test",
+        recap="test",
         keywords="test",
     )
     media_path = write_temp_file("tests_temp_image.jpg", b"nonempty image bytes")

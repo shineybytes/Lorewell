@@ -119,7 +119,7 @@ def create_event(payload: EventCreate, db: Session = Depends(get_db)):
         event_type=event.event_type,
         location=event.location,
         event_date=event.event_date,
-        notes=event.notes,
+        recap=event.recap,
         keywords=event.keywords,
         vendors=event.vendors,
     )
