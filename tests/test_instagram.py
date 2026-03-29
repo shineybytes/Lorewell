@@ -1,9 +1,9 @@
-from app.instagram import public_media_url, create_media_container, publish_container
+from app.instagram import create_media_container, publish_container, public_media_url
+from tests.instagram_helpers import make_response, patch_instagram_settings
 
 
 def test_public_media_url_uses_filename(mocker):
-    mock_settings = mocker.patch("app.instagram.settings")
-    mock_settings.app_base_url = "https://example.test"
+    patch_instagram_settings(mocker)
 
     result = public_media_url("/tmp/uploads/dj_photo.jpg")
 
@@ -11,15 +11,13 @@ def test_public_media_url_uses_filename(mocker):
 
 
 def test_create_media_container_for_image(mocker):
-    mock_settings = mocker.patch("app.instagram.settings")
-    mock_settings.graph_api_version = "v25.0"
-    mock_settings.instagram_account_id = "17841473771500345"
-    mock_settings.page_access_token = "page-token"
-    mock_settings.app_base_url = "https://example.test"
+    patch_instagram_settings(mocker)
 
-    mock_response = mocker.Mock()
-    mock_response.ok = True
-    mock_response.json.return_value = {"id": "container123"}
+    mock_response = make_response(
+        mocker,
+        ok=True,
+        json_data={"id": "container123"},
+    )
     post_mock = mocker.patch("app.instagram.requests.post", return_value=mock_response)
 
     result = create_media_container("media/test.jpg", "caption here", "image")
@@ -32,15 +30,13 @@ def test_create_media_container_for_image(mocker):
 
 
 def test_create_media_container_for_video(mocker):
-    mock_settings = mocker.patch("app.instagram.settings")
-    mock_settings.graph_api_version = "v25.0"
-    mock_settings.instagram_account_id = "17841473771500345"
-    mock_settings.page_access_token = "page-token"
-    mock_settings.app_base_url = "https://example.test"
+    patch_instagram_settings(mocker)
 
-    mock_response = mocker.Mock()
-    mock_response.ok = True
-    mock_response.json.return_value = {"id": "container456"}
+    mock_response = make_response(
+        mocker,
+        ok=True,
+        json_data={"id": "container456"},
+    )
     post_mock = mocker.patch("app.instagram.requests.post", return_value=mock_response)
 
     result = create_media_container("media/test.mp4", "caption here", "video")
@@ -52,22 +48,19 @@ def test_create_media_container_for_video(mocker):
 
 
 def test_publish_container_retries_when_media_not_ready(mocker):
-    mock_settings = mocker.patch("app.instagram.settings")
-    mock_settings.graph_api_version = "v25.0"
-    mock_settings.instagram_account_id = "17841473771500345"
-    mock_settings.page_access_token = "page-token"
+    patch_instagram_settings(mocker)
 
-    not_ready = mocker.Mock()
-    not_ready.ok = False
-    not_ready.status_code = 400
-    not_ready.text = (
-        '{"error":{"message":"Media ID is not available",'
-        '"error_user_msg":"The media is not ready for publishing, please wait for a moment"}}'
+    not_ready = make_response(
+        mocker,
+        ok=False,
+        status_code=400,
+        text='{"error":{"message":"Media ID is not available","error_user_msg":"The media is not ready for publishing, please wait for a moment"}}',
     )
-
-    success = mocker.Mock()
-    success.ok = True
-    success.json.return_value = {"id": "published123"}
+    success = make_response(
+        mocker,
+        ok=True,
+        json_data={"id": "published123"},
+    )
 
     post_mock = mocker.patch(
         "app.instagram.requests.post",
@@ -82,15 +75,14 @@ def test_publish_container_retries_when_media_not_ready(mocker):
 
 
 def test_publish_container_fails_fast_on_non_retryable_error(mocker):
-    mock_settings = mocker.patch("app.instagram.settings")
-    mock_settings.graph_api_version = "v25.0"
-    mock_settings.instagram_account_id = "17841473771500345"
-    mock_settings.page_access_token = "page-token"
+    patch_instagram_settings(mocker)
 
-    bad = mocker.Mock()
-    bad.ok = False
-    bad.status_code = 400
-    bad.text = '{"error":{"message":"Some other error"}}'
+    bad = make_response(
+        mocker,
+        ok=False,
+        status_code=400,
+        text='{"error":{"message":"Some other error"}}',
+    )
 
     mocker.patch("app.instagram.requests.post", return_value=bad)
 
