@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, v0.4.5-API-redesign-done-better]
+    branches: [main, v0.5-go-with-the-flow]
   pull_request:
 
 jobs:

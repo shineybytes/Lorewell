@@ -15,6 +15,7 @@ __pycache__/
 
 # media uploads
 media/
+testmedia/
 
 # cache
 .pytest_cache/
