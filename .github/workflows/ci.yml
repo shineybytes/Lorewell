@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, v0.5-go-with-the-flow]
+    branches: [main, v0.6-julian-slowik]
   pull_request:
 
 jobs:

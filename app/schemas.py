@@ -12,9 +12,11 @@ class EventCreate(BaseModel):
     event_type: str | None = None
     location: str | None = None
     event_date: datetime | None = None
+    event_timezone: str | None = None
     recap: str | None = None
     keywords: str | None = None
     vendors: str | None = None
+    event_guidance: str | None = None
 
 
 class EventResponse(BaseModel):
@@ -23,9 +25,11 @@ class EventResponse(BaseModel):
     event_type: str | None = None
     location: str | None = None
     event_date: datetime | None = None
+    event_timezone: str | None = None
     recap: str | None = None
     keywords: str | None = None
     vendors: str | None = None
+    event_guidance: str | None = None
 
 
 # =========================
@@ -95,6 +99,11 @@ class PostGenerationResponse(BaseModel):
     accessibility_text: str | None = None
     seo_keywords: list[str] = Field(default_factory=list)
     visual_summary: str | None = None
+
+class PostDraftUpdate(BaseModel):
+    brand_voice: str | None = None
+    cta_goal: str | None = None
+    generation_notes: str | None = None
 
 
 # =========================

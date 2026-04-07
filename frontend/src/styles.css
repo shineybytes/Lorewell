@@ -1,0 +1,162 @@
+:root {
+  color-scheme: light;
+  font-family: Inter, system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #fff;
+  color: #111;
+}
+
+img,
+video {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+textarea {
+  min-height: 8rem;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+}
+
+.skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+  background: #fff;
+  border: 2px solid #111;
+  padding: 0.5rem 0.75rem;
+  z-index: 1000;
+}
+
+.site-header {
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 1.5rem;
+}
+
+.site-shell {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.site-title {
+  margin: 0;
+}
+
+.nav-list {
+  display: flex;
+  gap: 1rem;
+  list-style: none;
+  padding: 0;
+}
+
+.page-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+fieldset {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+}
+
+legend {
+  font-weight: 700;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+}
+
+.form-row label {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.form-actions {
+  margin-top: 1rem;
+}
+
+.card-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.card {
+  border: 1px solid #ccc;
+  padding: 1rem;
+}
+
+.asset-preview {
+  width: min(100%, 320px);
+  margin-bottom: 1rem;
+}
+
+.button-link,
+button {
+  display: inline-block;
+  border: 1px solid #222;
+  background: #fff;
+  color: #111;
+  text-decoration: none;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+}
+
+.button-link:hover,
+button:hover {
+  background: #f3f3f3;
+}
+
+.button-link:focus,
+button:focus,
+input:focus,
+textarea:focus,
+select:focus,
+a:focus {
+  outline: 3px solid #1a73e8;
+  outline-offset: 2px;
+}
+
+.helper-text {
+  margin-bottom: 1rem;
+  color: #555;
+  font-size: 0.95rem;
+}
+
+.generated-option {
+  border: 1px solid #ccc;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.generated-option textarea {
+  width: 100%;
+  min-height: 6rem;
+  margin-bottom: 0.75rem;
+}

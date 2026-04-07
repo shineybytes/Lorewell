@@ -171,3 +171,28 @@ def test_scheduler_does_not_reclaim_fresh_publishing(mocker):
     assert fake_schedule.error_message is None
     assert fake_schedule.last_attempt_error is None
     assert fake_schedule.publish_attempts == 0
+
+def test_scheduler_builds_full_caption_from_caption_and_hashtags(mocker):
+    fake_schedule = FakeSchedule()
+    fake_approved = FakeApprovedPost()
+    fake_asset = FakeAsset()
+
+    db_mock = make_db_mock(
+        mocker,
+        stale_publishing=[],
+        scheduled=[fake_schedule],
+        approved_post=fake_approved,
+        asset=fake_asset,
+    )
+
+    mocker.patch("app.scheduler.SessionLocal", return_value=db_mock)
+    create_mock = mocker.patch("app.scheduler.create_media_container", return_value="container123")
+    mocker.patch("app.scheduler.wait_until_container_ready")
+    mocker.patch("app.scheduler.publish_container", return_value="published123")
+
+    process_due_posts()
+
+    _, kwargs = create_mock.call_args
+    assert kwargs["file_path"] == "media/test.jpg"
+    assert kwargs["media_type"] == "image"
+    assert kwargs["caption"] == "caption\n\n#one #two"

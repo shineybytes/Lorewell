@@ -1,11 +1,12 @@
 import os
-from datetime import timezone
+from datetime import datetime, timezone, UTC
 from pathlib import Path
 from zoneinfo import ZoneInfo, available_timezones
 
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from app.ai import analyze_media, generate_caption_package
@@ -26,6 +27,7 @@ from app.schemas import (
     EventResponse,
     PostDraftCreate,
     PostDraftCreateResponse,
+    PostDraftUpdate,
     PostGenerationResponse,
     ScheduleCreate,
     ScheduleResponse,
@@ -39,13 +41,20 @@ async def lifespan(app: FastAPI):
     start_scheduler()
     yield
 
-app = FastAPI(title="Lorewell")
+app = FastAPI(title="Lorewell", lifespan=lifespan)
 
 
 def init_app() -> None:
     Path(settings.media_dir).mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(bind=engine)
     app.mount("/media", StaticFiles(directory=settings.media_dir), name="media")
+    app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 init_app()
@@ -105,24 +114,48 @@ def create_post(payload: PostDraftCreate, db: Session) -> PostDraftCreateRespons
 def root():
     return {"ok": True, "message": "Lorewell running"}
 
+def validate_event_datetime(event: Event) -> None:
+    if event.event_date and not event.event_timezone:
+        raise HTTPException(400, "event_timezone required when event_date is provided")
 
-@app.post("/events", response_model=EventResponse)
-def create_event(payload: EventCreate, db: Session = Depends(get_db)):
-    event = Event(**payload.model_dump())
-    db.add(event)
-    db.commit()
-    db.refresh(event)
+    if event.event_timezone and not event.event_date:
+        raise HTTPException(400, "event_date required when event_timezone is provided")
 
+    if event.event_date and event.event_date.tzinfo is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="event_date must not include timezone or Z suffix",
+        )
+
+    if event.event_timezone:
+        try:
+            ZoneInfo(event.event_timezone)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid timezone")
+
+def to_event_response(event: Event) -> EventResponse:
     return EventResponse(
         id=event.id,
         title=event.title,
         event_type=event.event_type,
         location=event.location,
         event_date=event.event_date,
+        event_timezone=event.event_timezone,
         recap=event.recap,
         keywords=event.keywords,
         vendors=event.vendors,
+        event_guidance=event.event_guidance,
     )
+
+@app.post("/events", response_model=EventResponse)
+def create_event(payload: EventCreate, db: Session = Depends(get_db)):
+    event = Event(**payload.model_dump())
+    validate_event_datetime(event)
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+
+    return to_event_response(event)
 
 
 @app.post("/events/{event_id}/assets")
@@ -367,7 +400,7 @@ def schedule_post(
         raise HTTPException(status_code=400, detail="Invalid timezone")
 
     local_dt = payload.publish_at.replace(tzinfo=tz)
-    publish_at_utc = local_dt.astimezone(timezone.utc).replace(tzinfo=None)
+    publish_at_utc = local_dt.astimezone(UTC).replace(tzinfo=None)
 
     sched = Schedule(
         approved_post_id=approved.id,
@@ -388,7 +421,10 @@ def schedule_post(
 
 @app.get("/timezones")
 def list_timezones():
-    return sorted(available_timezones())
+    return sorted(
+        tz for tz in available_timezones()
+        if "/" in tz and not tz.startswith("Etc/")
+    )
 
 
 @app.post("/time/convert", response_model=TimeConvertResponse)
@@ -405,7 +441,7 @@ def convert_time(payload: TimeConvertRequest):
         raise HTTPException(status_code=400, detail="Invalid timezone")
 
     local_dt = payload.local_datetime.replace(tzinfo=tz)
-    utc_dt = local_dt.astimezone(timezone.utc)
+    utc_dt = local_dt.astimezone(UTC)
 
     return TimeConvertResponse(
         local_datetime=payload.local_datetime.isoformat(),
@@ -443,3 +479,76 @@ def debug_db(db: Session = Depends(get_db)):
         "schedule_count": len(schedules),
         "schedule_ids": [s.id for s in schedules],
     }
+
+@app.get("/events/{event_id}", response_model=EventResponse)
+def get_event(event_id: int, db: Session = Depends(get_db)):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    return to_event_response(event)
+
+@app.get("/events")
+def list_events(db: Session = Depends(get_db)):
+    events = db.query(Event).all()
+    return [to_event_response(e) for e in events]
+
+@app.get("/posts/{post_id}")
+def get_post(post_id: int, db: Session = Depends(get_db)):
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    return {
+        "id": post.id,
+        "event_id": post.event_id,
+        "asset_id": post.primary_asset_id,
+        "brand_voice": post.brand_voice,
+        "cta_goal": post.cta_goal,
+        "generation_notes": post.generation_notes,
+        "generated_caption_options": post.generated_caption_options,
+        "generated_hashtag_options": post.generated_hashtag_options,
+        "generated_accessibility_options": post.generated_accessibility_options,
+        "status": post.status,
+        "error_message": post.error_message,
+        "created_at": post.created_at.isoformat(),
+    }
+@app.patch("/posts/{post_id}", response_model=PostDraftCreateResponse)
+def update_post_route(
+    post_id: int,
+    payload: PostDraftUpdate,
+    db: Session = Depends(get_db),
+):
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    post.brand_voice = payload.brand_voice
+    post.cta_goal = payload.cta_goal
+    post.generation_notes = payload.generation_notes
+
+    db.add(post)
+    db.commit()
+    db.refresh(post)
+
+    return PostDraftCreateResponse(
+        post_id=post.id,
+        status=post.status,
+    )
+
+@app.get("/approved-posts")
+def list_approved_posts(db: Session = Depends(get_db)):
+    approved_posts = db.query(ApprovedPost).all()
+
+    return [
+        {
+            "id": a.id,
+            "post_id": a.post_id,
+            "selected_asset_id": a.selected_asset_id,
+            "caption_final": a.caption_final,
+            "hashtags_final": a.hashtags_final.split() if a.hashtags_final else [],
+            "accessibility_text": a.accessibility_text,
+            "status": "approved",
+        }
+        for a in approved_posts
+    ]

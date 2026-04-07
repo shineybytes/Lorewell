@@ -1,6 +1,5 @@
 # tests/conftest.py
 import os
-from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -12,7 +11,7 @@ from app.db import Base
 from app.main import app, get_db
 
 @pytest.fixture
-def client(tmp_path):
+def client(tmp_path, mocker):
     test_db_url = f"sqlite:///{tmp_path / 'test.db'}"
     engine = create_engine(
         test_db_url,
@@ -31,6 +30,7 @@ def client(tmp_path):
             db.close()
 
     app.dependency_overrides[get_db] = override_get_db
+    mocker.patch("app.main.start_scheduler", return_value=None)
 
     with TestClient(app) as c:
         yield c
