@@ -31,3 +31,6 @@ testmedia/
 # OS junk
 .DS_Store
 Thumbs.db
+
+# Old Frontend
+frontend-legacy/

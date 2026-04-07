@@ -44,6 +44,9 @@ class Event(Base):
     event_date: datetime | None
     # Primary timestamp anchor for the event (not necessarily full duration)
 
+    event_timezone: str | None
+    # What timezone did this happen at
+
     recap: str | None
     # Factual summary of what happened at the event (memory + context)
 
@@ -67,6 +70,7 @@ class Event(Base):
     event_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     location: Mapped[str | None] = mapped_column(String(255), nullable=True)
     event_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    event_timezone: Mapped[String | None] = mapped_column(String, nullable=True)
     recap: Mapped[str | None] = mapped_column(Text, nullable=True)
     keywords: Mapped[str | None] = mapped_column(Text, nullable=True)
     vendors: Mapped[str | None] = mapped_column(Text, nullable=True)

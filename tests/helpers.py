@@ -8,9 +8,11 @@ def create_event(
     event_type="dj set",
     location="San Diego",
     event_date="2026-03-19T01:00:00",
+    event_timezone="America/Los_Angeles",
     recap="Test recap",
     keywords="dj,test",
     vendors="Venue X",
+    event_guidance=None
 ) -> int:
     response = client.post(
         "/events",
@@ -19,9 +21,11 @@ def create_event(
             "event_type": event_type,
             "location": location,
             "event_date": event_date,
+            "event_timezone": event_timezone,
             "recap": recap,
             "keywords": keywords,
             "vendors": vendors,
+            "event_guidance": event_guidance
         },
     )
     assert response.status_code == 200
