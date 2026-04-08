@@ -45,9 +45,9 @@ def test_generate_post_stores_caption(client, mocker):
     mocker.patch(
         "app.main.generate_caption_package",
         return_value={
-            "caption_short": "short",
-            "caption_medium": "medium caption",
-            "caption_long": "long",
+            "caption_option_1": "caption one",
+            "caption_option_2": "caption two",
+            "caption_option_3": "caption three",
             "hashtags": ["one", "two"],
             "accessibility_text": "alt text",
             "seo_keywords": ["dj"],
@@ -66,7 +66,7 @@ def test_generate_post_stores_caption(client, mocker):
         assert generate_resp.status_code == 200
 
         body = generate_resp.json()
-        assert body["caption_medium"] == "medium caption"
+        assert body["caption_option_2"] == "caption two"
         assert body["hashtags"] == ["one", "two"]
         assert body["accessibility_text"] == "alt text"
 

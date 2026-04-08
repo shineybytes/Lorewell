@@ -5,7 +5,10 @@ export function listEventAssets(eventId: number) {
   return fetchJson<AssetRecord[]>(`/events/${eventId}/assets`);
 }
 
-export async function uploadAsset(eventId: number, file: File): Promise<UploadAssetResponse> {
+export async function uploadAsset(
+  eventId: number,
+  file: File,
+): Promise<UploadAssetResponse> {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -17,7 +20,8 @@ export async function uploadAsset(eventId: number, file: File): Promise<UploadAs
   const body = await response.json();
 
   if (!response.ok) {
-    const detail = typeof body?.detail === "string" ? body.detail : "Upload failed";
+    const detail =
+      typeof body?.detail === "string" ? body.detail : "Upload failed";
     throw new Error(detail);
   }
 
@@ -49,7 +53,7 @@ export function reanalyzeAsset(assetId: number, userCorrection: string) {
 
 export function approveAssetAccessibility(
   assetId: number,
-  accessibilityTextFinal: string
+  accessibilityTextFinal: string,
 ) {
   return fetchJson<{
     asset_id: number;
@@ -63,5 +67,11 @@ export function approveAssetAccessibility(
     body: JSON.stringify({
       accessibility_text_final: accessibilityTextFinal,
     }),
+  });
+}
+
+export function deleteAsset(assetId: number) {
+  return fetchJson(`/assets/${assetId}`, {
+    method: "DELETE",
   });
 }

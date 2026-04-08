@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -277,6 +277,9 @@ class Schedule(Base):
 
     publishing_started_at: datetime | None
     # When the current publish attempt began (for stale detection)
+
+    failure_acknowledged: Bool
+    # If the schedule fails, whether or not User has acknowledged the failed schedule. It's an Inbox system
     """
     __tablename__ = "schedules"
 
@@ -289,6 +292,7 @@ class Schedule(Base):
     status: Mapped[str] = mapped_column(String(30), default="scheduled")
     published_instagram_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    failure_acknowledged: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
     publishing_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

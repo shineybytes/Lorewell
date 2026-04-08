@@ -16,24 +16,25 @@ from app.media_validation import validate_media_file
 from app.models import ApprovedPost, Asset, Event, Post, Schedule
 from app.scheduler import start_scheduler
 from app.schemas import (
-    ApprovePostRequest,
-    ApprovedPostResponse,
-    AssetAnalyzeRequest,
-    AssetAnalyzeResponse,
-    AssetApproveRequest,
-    AssetApproveResponse,
-    AssetResponse,
-    EventCreate,
-    EventResponse,
-    PostDraftCreate,
-    PostDraftCreateResponse,
-    PostDraftUpdate,
-    PostGenerationResponse,
-    ScheduleCreate,
-    ScheduleResponse,
-    TimeConvertRequest,
-    TimeConvertResponse,
-)
+        ApprovePostRequest,
+        ApprovedPostResponse,
+        AssetAnalyzeRequest,
+        AssetAnalyzeResponse,
+        AssetApproveRequest,
+        AssetApproveResponse,
+        AssetResponse,
+        EventCreate,
+        EventResponse,
+        PostDraftCreate,
+        PostDraftCreateResponse,
+        PostDraftUpdate,
+        PostGenerateRequest,
+        PostGenerationResponse,
+        ScheduleCreate,
+        ScheduleResponse,
+        TimeConvertRequest,
+        TimeConvertResponse,
+        )
 
 
 @asynccontextmanager
@@ -49,12 +50,12 @@ def init_app() -> None:
     Base.metadata.create_all(bind=engine)
     app.mount("/media", StaticFiles(directory=settings.media_dir), name="media")
     app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+            CORSMiddleware,
+            allow_origins=["http://localhost:3000", "http://localhost:5173"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+            )
 
 
 init_app()
@@ -92,22 +93,22 @@ def create_post(payload: PostDraftCreate, db: Session) -> PostDraftCreateRespons
             raise HTTPException(status_code=404, detail="Event not found")
 
     post = Post(
-        event_id=payload.event_id,
-        primary_asset_id=payload.asset_id,
-        brand_voice=payload.brand_voice,
-        cta_goal=payload.cta_goal,
-        generation_notes=payload.generation_notes,
-        status="draft",
-    )
+            event_id=payload.event_id,
+            primary_asset_id=payload.asset_id,
+            brand_voice=payload.brand_voice,
+            cta_goal=payload.cta_goal,
+            generation_notes=payload.generation_notes,
+            status="draft",
+            )
 
     db.add(post)
     db.commit()
     db.refresh(post)
 
     return PostDraftCreateResponse(
-        post_id=post.id,
-        status=post.status,
-    )
+            post_id=post.id,
+            status=post.status,
+            )
 
 
 @app.get("/")
@@ -123,9 +124,9 @@ def validate_event_datetime(event: Event) -> None:
 
     if event.event_date and event.event_date.tzinfo is not None:
         raise HTTPException(
-            status_code=400,
-            detail="event_date must not include timezone or Z suffix",
-        )
+                status_code=400,
+                detail="event_date must not include timezone or Z suffix",
+                )
 
     if event.event_timezone:
         try:
@@ -135,17 +136,17 @@ def validate_event_datetime(event: Event) -> None:
 
 def to_event_response(event: Event) -> EventResponse:
     return EventResponse(
-        id=event.id,
-        title=event.title,
-        event_type=event.event_type,
-        location=event.location,
-        event_date=event.event_date,
-        event_timezone=event.event_timezone,
-        recap=event.recap,
-        keywords=event.keywords,
-        vendors=event.vendors,
-        event_guidance=event.event_guidance,
-    )
+            id=event.id,
+            title=event.title,
+            event_type=event.event_type,
+            location=event.location,
+            event_date=event.event_date,
+            event_timezone=event.event_timezone,
+            recap=event.recap,
+            keywords=event.keywords,
+            vendors=event.vendors,
+            event_guidance=event.event_guidance,
+            )
 
 @app.post("/events", response_model=EventResponse)
 def create_event(payload: EventCreate, db: Session = Depends(get_db)):
@@ -160,10 +161,10 @@ def create_event(payload: EventCreate, db: Session = Depends(get_db)):
 
 @app.post("/events/{event_id}/assets")
 def upload_asset(
-    event_id: int,
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-):
+        event_id: int,
+        file: UploadFile = File(...),
+        db: Session = Depends(get_db),
+        ):
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -182,11 +183,11 @@ def upload_asset(
         buffer.write(contents)
 
     asset = Asset(
-        event_id=event_id,
-        file_path=str(save_path),
-        media_type=media_type,
-        analysis_status="pending",
-    )
+            event_id=event_id,
+            file_path=str(save_path),
+            media_type=media_type,
+            analysis_status="pending",
+            )
     db.add(asset)
     db.commit()
     db.refresh(asset)
@@ -194,32 +195,32 @@ def upload_asset(
     asset = analyze_asset_record(asset, db)
 
     return {
-        "asset_id": asset.id,
-        "media_type": asset.media_type,
-        "analysis_status": asset.analysis_status,
-        "vision_summary_generated": asset.vision_summary_generated,
-        "accessibility_text_generated": asset.accessibility_text_generated,
-    }
+            "asset_id": asset.id,
+            "media_type": asset.media_type,
+            "analysis_status": asset.analysis_status,
+            "vision_summary_generated": asset.vision_summary_generated,
+            "accessibility_text_generated": asset.accessibility_text_generated,
+            }
 
 
 @app.get("/events/{event_id}/assets", response_model=list[AssetResponse])
 def list_event_assets(event_id: int, db: Session = Depends(get_db)):
     assets = db.query(Asset).filter(Asset.event_id == event_id).all()
     return [
-        AssetResponse(
-            id=a.id,
-            event_id=a.event_id,
-            file_path=a.file_path,
-            media_type=a.media_type,
-            analysis_status=a.analysis_status,
-            vision_summary_generated=a.vision_summary_generated,
-            accessibility_text_generated=a.accessibility_text_generated,
-            accessibility_text_final=a.accessibility_text_final,
-            analysis_error_message=a.analysis_error_message,
-            analysis_user_correction=a.analysis_user_correction
-        )
-        for a in assets
-    ]
+            AssetResponse(
+                id=a.id,
+                event_id=a.event_id,
+                file_path=a.file_path,
+                media_type=a.media_type,
+                analysis_status=a.analysis_status,
+                vision_summary_generated=a.vision_summary_generated,
+                accessibility_text_generated=a.accessibility_text_generated,
+                accessibility_text_final=a.accessibility_text_final,
+                analysis_error_message=a.analysis_error_message,
+                analysis_user_correction=a.analysis_user_correction
+                )
+            for a in assets
+            ]
 
 
 @app.post("/assets/{asset_id}/analyze", response_model=AssetAnalyzeResponse)
@@ -227,7 +228,7 @@ def analyze_asset(
         asset_id: int,
         payload:AssetAnalyzeRequest,
         db: Session = Depends(get_db)
-):
+        ):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
@@ -235,20 +236,20 @@ def analyze_asset(
     asset = analyze_asset_record(asset, db, user_correction=payload.user_correction)
 
     return AssetAnalyzeResponse(
-        asset_id=asset.id,
-        analysis_status=asset.analysis_status,
-        vision_summary_generated=asset.vision_summary_generated,
-        accessibility_text_generated=asset.accessibility_text_generated,
-        analysis_error_message=asset.analysis_error_message,
-    )
+            asset_id=asset.id,
+            analysis_status=asset.analysis_status,
+            vision_summary_generated=asset.vision_summary_generated,
+            accessibility_text_generated=asset.accessibility_text_generated,
+            analysis_error_message=asset.analysis_error_message,
+            )
 
 
 @app.post("/assets/{asset_id}/approve", response_model=AssetApproveResponse)
 def approve_asset(
-    asset_id: int,
-    payload: AssetApproveRequest,
-    db: Session = Depends(get_db),
-):
+        asset_id: int,
+        payload: AssetApproveRequest,
+        db: Session = Depends(get_db),
+        ):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
@@ -262,22 +263,25 @@ def approve_asset(
     db.refresh(asset)
 
     return AssetApproveResponse(
-        asset_id=asset.id,
-        analysis_status=asset.analysis_status,
-        accessibility_text_final=asset.accessibility_text_final or "",
-    )
+            asset_id=asset.id,
+            analysis_status=asset.analysis_status,
+            accessibility_text_final=asset.accessibility_text_final or "",
+            )
 
 
 @app.post("/posts", response_model=PostDraftCreateResponse)
 def create_post_route(
-    payload: PostDraftCreate,
-    db: Session = Depends(get_db),
-):
+        payload: PostDraftCreate,
+        db: Session = Depends(get_db),
+        ):
     return create_post(payload, db)
 
-
 @app.post("/posts/{post_id}/generate", response_model=PostGenerationResponse)
-def generate_post(post_id: int, db: Session = Depends(get_db)):
+def generate_post(
+    post_id: int,
+    payload: PostGenerateRequest | None = None,
+    db: Session = Depends(get_db),
+):
     post = db.query(Post).filter(Post.id == post_id).first()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
@@ -290,9 +294,16 @@ def generate_post(post_id: int, db: Session = Depends(get_db)):
     if post.event_id is not None:
         event = db.query(Event).filter(Event.id == post.event_id).first()
 
-    result = generate_caption_package(event, asset, post)
+    seed_caption = payload.seed_caption if payload else None
 
-    post.generated_caption_options = result.get("caption_medium")
+    result = generate_caption_package(
+        event,
+        asset,
+        post,
+        seed_caption=seed_caption,
+    )
+
+    post.generated_caption_options = result.get("caption_option_1")
     post.generated_hashtag_options = " ".join(result.get("hashtags", []))
     post.generated_accessibility_options = (
         asset.accessibility_text_final
@@ -308,22 +319,21 @@ def generate_post(post_id: int, db: Session = Depends(get_db)):
     return PostGenerationResponse(
         post_id=post.id,
         status=post.status,
-        caption_short=result.get("caption_short"),
-        caption_medium=result.get("caption_medium"),
-        caption_long=result.get("caption_long"),
+        caption_option_1=result.get("caption_option_1"),
+        caption_option_2=result.get("caption_option_2"),
+        caption_option_3=result.get("caption_option_3"),
         hashtags=result.get("hashtags", []),
         accessibility_text=post.generated_accessibility_options,
         seo_keywords=result.get("seo_keywords", []),
         visual_summary=result.get("visual_summary"),
     )
 
-
 @app.post("/posts/{post_id}/approve", response_model=ApprovedPostResponse)
 def approve_post(
-    post_id: int,
-    payload: ApprovePostRequest,
-    db: Session = Depends(get_db),
-):
+        post_id: int,
+        payload: ApprovePostRequest,
+        db: Session = Depends(get_db),
+        ):
     post = db.query(Post).filter(Post.id == post_id).first()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
@@ -336,15 +346,15 @@ def approve_post(
             payload.accessibility_text
             or asset.accessibility_text_final
             or asset.accessibility_text_generated
-    )
+            )
 
     approved = ApprovedPost(
-        post_id=post.id,
-        selected_asset_id=post.primary_asset_id,
-        caption_final=payload.caption_final,
-        hashtags_final=" ".join(payload.hashtags_final),
-        accessibility_text=final_accessibility_text,
-    )
+            post_id=post.id,
+            selected_asset_id=post.primary_asset_id,
+            caption_final=payload.caption_final,
+            hashtags_final=" ".join(payload.hashtags_final),
+            accessibility_text=final_accessibility_text,
+            )
 
     post.status = "approved"
 
@@ -354,45 +364,45 @@ def approve_post(
     db.refresh(approved)
 
     return ApprovedPostResponse(
-        approved_post_id=approved.id,
-        status="approved",
-    )
+            approved_post_id=approved.id,
+            status="approved",
+            )
 
 
 @app.get("/posts")
 def list_posts(db: Session = Depends(get_db)):
     posts = db.query(Post).all()
     return [
-        {
-            "id": p.id,
-            "event_id": p.event_id,
-            "asset_id": p.primary_asset_id,
-            "status": p.status,
-            "created_at": p.created_at.isoformat(),
-        }
-        for p in posts
-    ]
+            {
+                "id": p.id,
+                "event_id": p.event_id,
+                "asset_id": p.primary_asset_id,
+                "status": p.status,
+                "created_at": p.created_at.isoformat(),
+                }
+            for p in posts
+            ]
 
 
 @app.post("/approved-posts/{approved_post_id}/schedule", response_model=ScheduleResponse)
 def schedule_post(
-    approved_post_id: int,
-    payload: ScheduleCreate,
-    db: Session = Depends(get_db),
-):
+        approved_post_id: int,
+        payload: ScheduleCreate,
+        db: Session = Depends(get_db),
+        ):
     approved = (
-        db.query(ApprovedPost)
-        .filter(ApprovedPost.id == approved_post_id)
-        .first()
-    )
+            db.query(ApprovedPost)
+            .filter(ApprovedPost.id == approved_post_id)
+            .first()
+            )
     if not approved:
         raise HTTPException(status_code=404, detail="ApprovedPost not found")
 
     if payload.publish_at.tzinfo is not None:
         raise HTTPException(
-            status_code=400,
-            detail="publish_at must not include timezone or Z suffix",
-        )
+                status_code=400,
+                detail="publish_at must not include timezone or Z suffix",
+                )
 
     try:
         tz = ZoneInfo(payload.publish_timezone)
@@ -403,37 +413,37 @@ def schedule_post(
     publish_at_utc = local_dt.astimezone(UTC).replace(tzinfo=None)
 
     sched = Schedule(
-        approved_post_id=approved.id,
-        publish_at=publish_at_utc,
-        publish_timezone=payload.publish_timezone,
-        status="scheduled",
-    )
+            approved_post_id=approved.id,
+            publish_at=publish_at_utc,
+            publish_timezone=payload.publish_timezone,
+            status="scheduled",
+            )
 
     db.add(sched)
     db.commit()
     db.refresh(sched)
 
     return ScheduleResponse(
-        schedule_id=sched.id,
-        status=sched.status,
-    )
+            schedule_id=sched.id,
+            status=sched.status,
+            )
 
 
 @app.get("/timezones")
 def list_timezones():
     return sorted(
-        tz for tz in available_timezones()
-        if "/" in tz and not tz.startswith("Etc/")
-    )
+            tz for tz in available_timezones()
+            if "/" in tz and not tz.startswith("Etc/")
+            )
 
 
 @app.post("/time/convert", response_model=TimeConvertResponse)
 def convert_time(payload: TimeConvertRequest):
     if payload.local_datetime.tzinfo is not None:
         raise HTTPException(
-            status_code=400,
-            detail="local_datetime must not include a timezone or a Z suffix",
-        )
+                status_code=400,
+                detail="local_datetime must not include a timezone or a Z suffix",
+                )
 
     try:
         tz = ZoneInfo(payload.timezone)
@@ -444,41 +454,65 @@ def convert_time(payload: TimeConvertRequest):
     utc_dt = local_dt.astimezone(UTC)
 
     return TimeConvertResponse(
-        local_datetime=payload.local_datetime.isoformat(),
-        timezone=payload.timezone,
-        utc_datetime=utc_dt.replace(tzinfo=None).isoformat(),
-    )
-
+            local_datetime=payload.local_datetime.isoformat(),
+            timezone=payload.timezone,
+            utc_datetime=utc_dt.replace(tzinfo=None).isoformat(),
+            )
 
 @app.get("/schedules")
 def list_schedules(db: Session = Depends(get_db)):
     schedules = db.query(Schedule).order_by(Schedule.publish_at.asc()).all()
-    return [
-        {
-            "id": s.id,
-            "approved_post_id": s.approved_post_id,
-            "publish_at": s.publish_at.isoformat(),
-            "publish_timezone": s.publish_timezone,
-            "status": s.status,
-            "error_message": s.error_message,
-            "published_instagram_id": s.published_instagram_id,
-        }
-        for s in schedules
-    ]
+
+    results = []
+    for s in schedules:
+        approved = (
+                db.query(ApprovedPost)
+                .filter(ApprovedPost.id == s.approved_post_id)
+                .first()
+                )
+
+        asset = None
+        if approved:
+            asset = (
+                    db.query(Asset)
+                    .filter(Asset.id == approved.selected_asset_id)
+                    .first()
+                    )
+
+        results.append(
+                {
+                    "id": s.id,
+                    "approved_post_id": s.approved_post_id,
+                    "publish_at": s.publish_at.isoformat(),
+                    "publish_timezone": s.publish_timezone,
+                    "status": s.status,
+                    "error_message": s.error_message,
+                    "published_instagram_id": s.published_instagram_id,
+                    "caption_final": approved.caption_final if approved else "",
+                    "hashtags_final": approved.hashtags_final.split() if approved and approved.hashtags_final else [],
+                    "accessibility_text": approved.accessibility_text if approved else None,
+                    "asset_file_path": asset.file_path if asset else None,
+                    "asset_media_type": asset.media_type if asset else None,
+                    "selected_asset_id": approved.selected_asset_id if approved else None,
+                    "failure_acknowledged": s.failure_acknowledged,
+                    }
+                )
+
+    return results
 
 
 @app.get("/debug/db")
 def debug_db(db: Session = Depends(get_db)):
     schedules = db.query(Schedule).all()
     return {
-        "cwd": os.getcwd(),
-        "settings_database_url": settings.database_url,
-        "engine_url": str(engine.url),
-        "bound_url": str(db.get_bind().url),
-        "resolved_local_db": str(Path("./lorewell.db").resolve()),
-        "schedule_count": len(schedules),
-        "schedule_ids": [s.id for s in schedules],
-    }
+            "cwd": os.getcwd(),
+            "settings_database_url": settings.database_url,
+            "engine_url": str(engine.url),
+            "bound_url": str(db.get_bind().url),
+            "resolved_local_db": str(Path("./lorewell.db").resolve()),
+            "schedule_count": len(schedules),
+            "schedule_ids": [s.id for s in schedules],
+            }
 
 @app.get("/events/{event_id}", response_model=EventResponse)
 def get_event(event_id: int, db: Session = Depends(get_db)):
@@ -499,6 +533,13 @@ def get_post(post_id: int, db: Session = Depends(get_db)):
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
 
+    approved = (
+        db.query(ApprovedPost)
+        .filter(ApprovedPost.post_id == post.id)
+        .order_by(ApprovedPost.id.desc())
+        .first()
+    )
+
     return {
         "id": post.id,
         "event_id": post.event_id,
@@ -509,16 +550,20 @@ def get_post(post_id: int, db: Session = Depends(get_db)):
         "generated_caption_options": post.generated_caption_options,
         "generated_hashtag_options": post.generated_hashtag_options,
         "generated_accessibility_options": post.generated_accessibility_options,
+        "approved_caption_final": approved.caption_final if approved else None,
+        "approved_hashtags_final": approved.hashtags_final if approved else None,
+        "approved_accessibility_text": approved.accessibility_text if approved else None,
         "status": post.status,
         "error_message": post.error_message,
         "created_at": post.created_at.isoformat(),
     }
+
 @app.patch("/posts/{post_id}", response_model=PostDraftCreateResponse)
 def update_post_route(
-    post_id: int,
-    payload: PostDraftUpdate,
-    db: Session = Depends(get_db),
-):
+        post_id: int,
+        payload: PostDraftUpdate,
+        db: Session = Depends(get_db),
+        ):
     post = db.query(Post).filter(Post.id == post_id).first()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
@@ -532,23 +577,173 @@ def update_post_route(
     db.refresh(post)
 
     return PostDraftCreateResponse(
-        post_id=post.id,
-        status=post.status,
-    )
+            post_id=post.id,
+            status=post.status,
+            )
 
 @app.get("/approved-posts")
 def list_approved_posts(db: Session = Depends(get_db)):
     approved_posts = db.query(ApprovedPost).all()
 
-    return [
-        {
-            "id": a.id,
-            "post_id": a.post_id,
-            "selected_asset_id": a.selected_asset_id,
-            "caption_final": a.caption_final,
-            "hashtags_final": a.hashtags_final.split() if a.hashtags_final else [],
-            "accessibility_text": a.accessibility_text,
-            "status": "approved",
-        }
-        for a in approved_posts
-    ]
+    results = []
+    for a in approved_posts:
+        asset = db.query(Asset).filter(Asset.id == a.selected_asset_id).first()
+
+        results.append(
+                {
+                    "id": a.id,
+                    "post_id": a.post_id,
+                    "selected_asset_id": a.selected_asset_id,
+                    "caption_final": a.caption_final,
+                    "hashtags_final": a.hashtags_final.split() if a.hashtags_final else [],
+                    "accessibility_text": a.accessibility_text,
+                    "status": "approved",
+                    "asset_file_path": asset.file_path if asset else None,
+                    "asset_media_type": asset.media_type if asset else None,
+                    }
+                )
+
+    return results
+
+@app.post("/approved-posts/{approved_post_id}/publish-now", response_model=ScheduleResponse)
+def publish_now(
+        approved_post_id: int,
+        db: Session = Depends(get_db),
+        ):
+    approved = (
+            db.query(ApprovedPost)
+            .filter(ApprovedPost.id == approved_post_id)
+            .first()
+            )
+    if not approved:
+        raise HTTPException(status_code=404, detail="ApprovedPost not found")
+
+    sched = Schedule(
+            approved_post_id=approved.id,
+            publish_at=datetime.now(UTC).replace(tzinfo=None),
+            publish_timezone="UTC",
+            status="scheduled",
+            )
+
+    db.add(sched)
+    db.commit()
+    db.refresh(sched)
+
+    return ScheduleResponse(
+            schedule_id=sched.id,
+            status=sched.status,
+            )
+
+@app.patch("/schedules/{schedule_id}/acknowledge")
+def acknowledge_schedule_failure(
+        schedule_id: int,
+        db: Session = Depends(get_db),
+        ):
+    schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+
+    schedule.failure_acknowledged = not schedule.failure_acknowledged
+
+    db.add(schedule)
+    db.commit()
+    db.refresh(schedule)
+
+    return {
+            "id": schedule.id,
+            "failure_acknowledged": schedule.failure_acknowledged,
+            }
+
+@app.post("/schedules/{schedule_id}/retry")
+def retry_schedule(schedule_id: int, db: Session = Depends(get_db)):
+    schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+
+    if schedule.status != "failed":
+        raise HTTPException(status_code=400, detail="Only failed schedules can be retried")
+
+    new_schedule = Schedule(
+        approved_post_id=schedule.approved_post_id,
+        publish_at=datetime.utcnow(),
+        publish_timezone=schedule.publish_timezone,
+        status="scheduled",
+        error_message=None,
+        failure_acknowledged=False,
+    )
+
+    db.add(new_schedule)
+    db.commit()
+    db.refresh(new_schedule)
+
+    return {
+        "schedule_id": new_schedule.id,
+        "status": new_schedule.status,
+    }
+
+@app.post("/schedules/archive-all-failed")
+def archive_all_failed(db: Session = Depends(get_db)):
+    schedules = (
+        db.query(Schedule)
+        .filter(Schedule.status == "failed", Schedule.failure_acknowledged == False)
+        .all()
+    )
+
+    for s in schedules:
+        s.failure_acknowledged = True
+
+    db.commit()
+    return {"count": len(schedules)}
+
+@app.post("/schedules/restore-all-failed")
+def restore_all_failed(db: Session = Depends(get_db)):
+    schedules = (
+        db.query(Schedule)
+        .filter(Schedule.status == "failed", Schedule.failure_acknowledged == True)
+        .all()
+    )
+
+    for s in schedules:
+        s.failure_acknowledged = False
+
+    db.commit()
+    return {"count": len(schedules)}
+
+@app.delete("/posts/{post_id}")
+def delete_post(post_id: int, db: Session = Depends(get_db)):
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    db.delete(post)
+    db.commit()
+    return {"status": "deleted"}
+
+@app.delete("/assets/{asset_id}")
+def delete_asset(asset_id: int, db: Session = Depends(get_db)):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    # block if used
+    post = db.query(Post).filter(Post.primary_asset_id == asset_id).first()
+    if post:
+        raise HTTPException(status_code=400, detail="Asset is in use")
+
+    db.delete(asset)
+    db.commit()
+    return {"status": "deleted"}
+
+@app.delete("/events/{event_id}")
+def delete_event(event_id: int, db: Session = Depends(get_db)):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    asset = db.query(Asset).filter(Asset.event_id == event_id).first()
+    if asset:
+        raise HTTPException(status_code=400, detail="Event has assets")
+
+    db.delete(event)
+    db.commit()
+    return {"status": "deleted"}

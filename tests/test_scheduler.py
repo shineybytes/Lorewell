@@ -22,6 +22,7 @@ class FakeSchedule:
         self.publish_attempts = 0
         self.last_attempt_error = None
         self.publishing_started_at = None
+        self.failure_acknowledged = False
 
 
 class FakeApprovedPost:
@@ -196,3 +197,27 @@ def test_scheduler_builds_full_caption_from_caption_and_hashtags(mocker):
     assert kwargs["file_path"] == "media/test.jpg"
     assert kwargs["media_type"] == "image"
     assert kwargs["caption"] == "caption\n\n#one #two"
+
+def test_failed_schedule_keeps_failure_acknowledged_default_false(mocker):
+    fake_schedule = FakeSchedule()
+    fake_schedule.failure_acknowledged = False
+    fake_approved = FakeApprovedPost()
+    fake_asset = FakeAsset()
+
+    db_mock = make_db_mock(
+        mocker,
+        stale_publishing=[],
+        scheduled=[fake_schedule],
+        approved_post=fake_approved,
+        asset=fake_asset,
+    )
+
+    mocker.patch("app.scheduler.SessionLocal", return_value=db_mock)
+    mocker.patch("app.scheduler.create_media_container", return_value="container123")
+    mocker.patch("app.scheduler.wait_until_container_ready")
+    mocker.patch("app.scheduler.publish_container", side_effect=RuntimeError("publish failed"))
+
+    process_due_posts()
+
+    assert fake_schedule.status == "failed"
+    assert fake_schedule.failure_acknowledged is False

@@ -4,8 +4,10 @@ import { getEvent } from "../api/events";
 import { listEventAssets, uploadAsset } from "../api/assets";
 import type { AssetRecord, EventRecord } from "../types/api";
 import StatusMessage from "../components/StatusMessage";
-import AssetPreview from "../components/AssetPreview";
 import AssetCard from "../components/AssetCard";
+import { useAsyncState } from "../hooks/useAsyncState";
+import { useNavigate } from "react-router-dom";
+import { deleteEvent } from "../api/events";
 
 export default function EventDetailPage() {
   const { eventId } = useParams();
@@ -13,17 +15,17 @@ export default function EventDetailPage() {
 
   const [event, setEvent] = useState<EventRecord | null>(null);
   const [assets, setAssets] = useState<AssetRecord[]>([]);
-  const [status, setStatus] = useState("");
-  const [error, setError] = useState("");
-  const [uploadStatus, setUploadStatus] = useState("");
-  const [uploadError, setUploadError] = useState("");
+
+  const navigate = useNavigate();
+
+  const loadState = useAsyncState();
+  const uploadState = useAsyncState();
 
   async function loadData() {
     if (!Number.isFinite(numericEventId)) return;
 
     try {
-      setStatus("Loading event...");
-      setError("");
+      loadState.start("Loading event...");
 
       const [eventData, assetData] = await Promise.all([
         getEvent(numericEventId),
@@ -32,11 +34,12 @@ export default function EventDetailPage() {
 
       setEvent(eventData);
       setAssets(assetData);
-      setStatus("");
+      loadState.succeed("");
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Failed to load event.");
-      setStatus("");
+      loadState.fail(
+        err instanceof Error ? err.message : "Failed to load event.",
+      );
     }
   }
 
@@ -46,11 +49,9 @@ export default function EventDetailPage() {
 
   async function handleUpload(eventSubmit: FormEvent<HTMLFormElement>) {
     eventSubmit.preventDefault();
-    setUploadStatus("");
-    setUploadError("");
 
     if (!Number.isFinite(numericEventId)) {
-      setUploadError("Missing event id.");
+      uploadState.fail("Missing event id.");
       return;
     }
 
@@ -59,24 +60,23 @@ export default function EventDetailPage() {
     const files = input?.files;
 
     if (!files || files.length === 0) {
-      setUploadError("Choose at least one file.");
+      uploadState.fail("Choose at least one file.");
       return;
     }
 
     try {
-      setUploadStatus("Uploading assets...");
+      uploadState.start("Uploading assets...");
 
       for (const file of Array.from(files)) {
         await uploadAsset(numericEventId, file);
       }
 
-      setUploadStatus("Upload complete.");
       form.reset();
       await loadData();
+      uploadState.succeed("Upload complete.");
     } catch (err) {
       console.error(err);
-      setUploadError(err instanceof Error ? err.message : "Upload failed.");
-      setUploadStatus("");
+      uploadState.fail(err instanceof Error ? err.message : "Upload failed.");
     }
   }
 
@@ -90,9 +90,49 @@ export default function EventDetailPage() {
         <Link to="/">Back to Events</Link>
       </p>
 
-      <h2 id="event-detail-heading">{event?.title || "Event"}</h2>
+      <header className="page-header">
+        <div>
+          <h2 id="event-detail-heading">{event?.title || "Event"}</h2>
+        </div>
 
-      <StatusMessage status={status} error={error} />
+        {event && (
+          <div className="approval-action-row">
+            <button
+              type="button"
+              className="button-danger"
+              onClick={async () => {
+                if (
+                  !confirm(
+                    "Delete this event? This may affect related assets and drafts.",
+                  )
+                ) {
+                  return;
+                }
+
+                try {
+                  await deleteEvent(numericEventId);
+                  navigate("/");
+                } catch (err) {
+                  console.error(err);
+                  alert(
+                    err instanceof Error
+                      ? err.message
+                      : "Failed to delete event.",
+                  );
+                }
+              }}
+            >
+              Delete Event
+            </button>
+          </div>
+        )}
+      </header>
+
+      <StatusMessage
+        loading={loadState.loading}
+        status={loadState.status}
+        error={loadState.error}
+      />
 
       {event && (
         <>
@@ -116,7 +156,8 @@ export default function EventDetailPage() {
               <strong>Recap:</strong> {event.recap || "No recap provided."}
             </p>
             <p>
-              <strong>Guidance:</strong> {event.event_guidance || "No guidance provided."}
+              <strong>Guidance:</strong>{" "}
+              {event.event_guidance || "No guidance provided."}
             </p>
           </section>
 
@@ -129,10 +170,16 @@ export default function EventDetailPage() {
                 <input id="asset-upload" name="files" type="file" multiple />
               </div>
 
-              <button type="submit">Upload Assets</button>
+              <button type="submit" disabled={uploadState.loading}>
+                {uploadState.loading ? "Uploading..." : "Upload Assets"}
+              </button>
             </form>
 
-            <StatusMessage status={uploadStatus} error={uploadError} />
+            <StatusMessage
+              loading={uploadState.loading}
+              status={uploadState.status}
+              error={uploadState.error}
+            />
           </section>
 
           <section aria-labelledby="assets-heading">
@@ -141,13 +188,17 @@ export default function EventDetailPage() {
             {!assets.length ? (
               <p>No assets uploaded yet.</p>
             ) : (
-			<ul className="card-list">
-			{assets.map((asset) => (
-				<li key={asset.id}>
-				<AssetCard asset={asset} eventId={numericEventId} onRefresh={loadData} />
-				</li>
-			))}
-			</ul>
+              <ul className="card-list">
+                {assets.map((asset) => (
+                  <li key={asset.id}>
+                    <AssetCard
+                      asset={asset}
+                      eventId={numericEventId}
+                      onRefresh={loadData}
+                    />
+                  </li>
+                ))}
+              </ul>
             )}
           </section>
         </>

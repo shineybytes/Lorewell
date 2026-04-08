@@ -21,12 +21,12 @@ export default function Layout() {
               <li>
                 <NavLink to="/drafts">Drafts</NavLink>
               </li>
-			  <li>
-			  	<NavLink to="/approvals">Approvals</NavLink>
-			  </li>
-			  <li>
-			  	<NavLink to="/schedules">Schedules</NavLink>
-			  </li>
+              <li>
+                <NavLink to="/approvals">Approvals</NavLink>
+              </li>
+              <li>
+                <NavLink to="/schedules">Schedules</NavLink>
+              </li>
             </ul>
           </nav>
         </div>

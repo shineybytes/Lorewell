@@ -28,56 +28,61 @@ def _to_data_url(path: str) -> str:
     b64 = base64.b64encode(file_path.read_bytes()).decode("utf-8")
     return f"data:{mime};base64,{b64}"
 
+def _build_generation_prompt(event, asset, post, seed_caption: str | None = None) -> str:
+    event_bits = []
+    if event:
+        event_bits.append(f"Event Title: {event.title}")
+        if event.event_type:
+            event_bits.append(f"Event Type: {event.event_type}")
+        if event.location:
+            event_bits.append(f"Location: {event.location}")
+        if event.recap:
+            event_bits.append(f"Recap: {event.recap}")
+        if event.event_guidance:
+            event_bits.append(f"Guidance: {event.event_guidance}")
 
-def _build_generation_prompt(
-    event: Event | None,
-    asset: Asset,
-    post: Post,
-) -> str:
-    brand_voice = post.brand_voice or settings.default_brand_voice
-    cta_goal = getattr(post, "cta_goal", None) or getattr(post, "cta_instruction", None) or ""
-    generation_notes = post.generation_notes or ""
+    asset_bits = [
+        f"Media Type: {asset.media_type}",
+        f"Visual Summary: {asset.vision_summary_generated or 'None'}",
+        f"Accessibility Text: {asset.accessibility_text_final or asset.accessibility_text_generated or 'None'}",
+    ]
 
-    event_title = event.title if event else ""
-    event_type = event.event_type if event else ""
-    location = event.location if event else ""
-    event_date = event.event_date.isoformat() if event and event.event_date else ""
-    recap = event.recap if event else ""
-    keywords = event.keywords if event else ""
-    vendors = event.vendors if event else ""
+    post_bits = [
+        f"Brand Voice: {post.brand_voice or 'None'}",
+        f"CTA Goal: {post.cta_goal or 'None'}",
+        f"Generation Notes: {post.generation_notes or 'None'}",
+    ]
 
-    asset_accessibility = asset.accessibility_text_final or asset.accessibility_text_generated or ""
-    asset_visual_summary = asset.vision_summary_generated or ""
+    variant_section = ""
+    if seed_caption and seed_caption.strip():
+        variant_section = f"""
+Existing caption draft:
+{seed_caption.strip()}
 
-    event_guidance = event.event_guidance if event else ""
+Use this as the basis for the new caption options.
+Preserve the core intent and message, but provide three distinct variations.
+"""
 
     return f"""
-Generate a structured Instagram caption package for a single media asset.
+You are generating Instagram post content.
 
-Event context:
-- Title: {event_title}
-- Event type: {event_type}
-- Location: {location}
-- Event date: {event_date}
-- Vendors: {vendors}
-- Recap: {recap}
-- Keywords: {keywords}
-- Event Guidance: {event_guidance}
+Context:
+{chr(10).join(event_bits)}
 
-Post generation context:
-- Brand voice: {brand_voice}
-- CTA goal: {cta_goal}
-- Additional generation notes: {generation_notes}
+Asset:
+{chr(10).join(asset_bits)}
 
-Asset context:
-- Media type: {asset.media_type}
-- Existing visual summary: {asset_visual_summary}
-- Existing accessibility text: {asset_accessibility}
+Post Settings:
+{chr(10).join(post_bits)}
+
+{variant_section}
 
 Return JSON only with these keys:
-caption_short, caption_medium, caption_long, hashtags, accessibility_text, seo_keywords, visual_summary
+caption_option_1, caption_option_2, caption_option_3, hashtags, accessibility_text, seo_keywords, visual_summary
 
 Rules:
+- Produce three distinct caption options for the same post
+- All three captions should follow the same instructions and be viable final choices
 - Keep captions specific, natural, and human
 - Avoid cringe, spammy, or generic marketing language
 - Integrate the CTA goal naturally rather than making it sound forced
@@ -88,16 +93,16 @@ Rules:
 - visual_summary should be concise and useful for internal reference
 """.strip()
 
-
 def generate_caption_package(
     event: Event | None,
     asset: Asset,
     post: Post,
+    seed_caption: str | None = None
 ) -> dict:
     content = [
         {
             "type": "input_text",
-            "text": _build_generation_prompt(event=event, asset=asset, post=post),
+            "text": _build_generation_prompt(event=event, asset=asset, post=post, seed_caption=seed_caption),
         }
     ]
 
@@ -147,9 +152,17 @@ Rules:
             }
         )
     else:
+        cleaned_correction = (user_correction or "").strip()
+
+        if cleaned_correction:
+            return {
+                "visual_summary": cleaned_correction,
+                "accessibility_text": cleaned_correction,
+            }
+
         return {
-            "visual_summary": f"Auto-generated summary for {media_type}",
-            "accessibility_text": f"Auto-generated accessibility text for {media_type}",
+            "visual_summary": f"Video uploaded. Manual description needed.",
+            "accessibility_text": f"Video uploaded. Add a manual description in Corrections to generate accessibility text.",
         }
 
     response = client.responses.create(

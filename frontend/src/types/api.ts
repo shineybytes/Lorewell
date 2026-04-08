@@ -54,6 +54,9 @@ export type PostRecord = {
   generated_caption_options?: string | null;
   generated_hashtag_options?: string | null;
   generated_accessibility_options?: string | null;
+  approved_caption_final?: string | null;
+  approved_hashtags_final?: string | null;
+  approved_accessibility_text?: string | null;
   status: string;
   error_message?: string | null;
   created_at: string;
@@ -67,13 +70,13 @@ export type PostCreateResponse = {
 export type PostGenerationResponse = {
   post_id: number;
   status: string;
-  caption_short: string;
-  caption_medium: string;
-  caption_long: string;
+  caption_option_1?: string | null;
+  caption_option_2?: string | null;
+  caption_option_3?: string | null;
   hashtags: string[];
-  accessibility_text: string;
+  accessibility_text?: string | null;
   seo_keywords: string[];
-  visual_summary: string;
+  visual_summary?: string | null;
 };
 
 export type ApprovedPostResponse = {

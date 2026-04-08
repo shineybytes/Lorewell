@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listPosts } from "../api/posts";
+import { deletePost } from "../api/posts";
 import type { PostRecord } from "../types/api";
 import StatusMessage from "../components/StatusMessage";
 
@@ -23,7 +24,7 @@ export default function DraftsPage() {
 
         const posts = await listPosts();
         const filtered = posts.filter(
-          (post) => post.status === "draft" || post.status === "generated"
+          (post) => post.status === "draft" || post.status === "generated",
         );
 
         setDrafts(filtered);
@@ -70,9 +71,40 @@ export default function DraftsPage() {
                   <strong>Created:</strong> {formatDate(draft.created_at)}
                 </p>
 
-                <Link className="button-link" to={`/drafts/editor?post_id=${draft.id}`}>
-                  Open Draft
-                </Link>
+                <div className="approval-action-row">
+                  <Link
+                    className="button-link"
+                    to={`/drafts/editor?post_id=${draft.id}`}
+                  >
+                    Open Draft
+                  </Link>
+
+                  <button
+                    type="button"
+                    className="button-danger"
+                    onClick={async () => {
+                      if (!confirm("Delete this draft?")) return;
+
+                      try {
+                        await deletePost(draft.id);
+
+                        // remove locally (faster UX than full reload)
+                        setDrafts((prev) =>
+                          prev.filter((d) => d.id !== draft.id),
+                        );
+                      } catch (err) {
+                        console.error(err);
+                        alert(
+                          err instanceof Error
+                            ? err.message
+                            : "Failed to delete draft.",
+                        );
+                      }
+                    }}
+                  >
+                    Delete Draft
+                  </button>
+                </div>
               </article>
             </li>
           ))}

@@ -1,6 +1,9 @@
 const API_BASE = "http://localhost:8000";
 
-export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
+export async function fetchJson<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, init);
 
   let body: unknown = null;
