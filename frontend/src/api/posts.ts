@@ -36,7 +36,7 @@ export function updatePost(
     brand_voice: string;
     cta_goal: string;
     generation_notes?: string;
-  }
+  },
 ) {
   return fetchJson<PostCreateResponse>(`/posts/${postId}`, {
     method: "PATCH",
@@ -47,9 +47,15 @@ export function updatePost(
   });
 }
 
-export function generatePost(postId: number) {
+export function generatePost(postId: number, seedCaption?: string) {
   return fetchJson<PostGenerationResponse>(`/posts/${postId}/generate`, {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      seed_caption: seedCaption || null,
+    }),
   });
 }
 
@@ -59,7 +65,7 @@ export function approvePost(
     caption_final: string;
     hashtags_final: string[];
     accessibility_text: string;
-  }
+  },
 ) {
   return fetchJson<ApprovedPostResponse>(`/posts/${postId}/approve`, {
     method: "POST",
@@ -67,5 +73,10 @@ export function approvePost(
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
+  });
+}
+export function deletePost(postId: number) {
+  return fetchJson(`/posts/${postId}`, {
+    method: "DELETE",
   });
 }

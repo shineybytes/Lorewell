@@ -4,6 +4,10 @@
   line-height: 1.5;
 }
 
+/* =========================
+   Base / Reset
+   ========================= */
+
 * {
   box-sizing: border-box;
 }
@@ -16,9 +20,9 @@ body {
 
 img,
 video {
+  display: block;
   max-width: 100%;
   height: auto;
-  display: block;
 }
 
 button,
@@ -32,24 +36,32 @@ textarea {
   min-height: 8rem;
 }
 
+/* =========================
+   Accessibility
+   ========================= */
+
 .skip-link {
   position: absolute;
-  left: -9999px;
   top: 0;
+  left: -9999px;
 }
 
 .skip-link:focus {
-  left: 1rem;
   top: 1rem;
+  left: 1rem;
+  z-index: 1000;
+  padding: 0.5rem 0.75rem;
   background: #fff;
   border: 2px solid #111;
-  padding: 0.5rem 0.75rem;
-  z-index: 1000;
 }
 
+/* =========================
+   Layout
+   ========================= */
+
 .site-header {
-  border-bottom: 1px solid #ddd;
   margin-bottom: 1.5rem;
+  border-bottom: 1px solid #ddd;
 }
 
 .site-shell {
@@ -62,19 +74,23 @@ textarea {
   margin: 0;
 }
 
-.nav-list {
-  display: flex;
-  gap: 1rem;
-  list-style: none;
-  padding: 0;
-}
-
 .page-header {
   display: flex;
   align-items: start;
   justify-content: space-between;
   gap: 1rem;
 }
+
+.nav-list {
+  display: flex;
+  gap: 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+/* =========================
+   Forms
+   ========================= */
 
 fieldset {
   margin-bottom: 1.5rem;
@@ -92,45 +108,43 @@ legend {
 }
 
 .form-row label {
-  font-weight: 600;
   margin-bottom: 0.25rem;
+  font-weight: 600;
 }
 
 .form-actions {
   margin-top: 1rem;
 }
 
-.card-list {
-  list-style: none;
-  padding: 0;
-  display: grid;
-  gap: 1rem;
-}
-
-.card {
-  border: 1px solid #ccc;
-  padding: 1rem;
-}
-
-.asset-preview {
-  width: min(100%, 320px);
+.helper-text {
   margin-bottom: 1rem;
+  color: #555;
+  font-size: 0.95rem;
 }
+
+/* =========================
+   Buttons / Links
+   ========================= */
 
 .button-link,
 button {
   display: inline-block;
+  padding: 0.5rem 0.75rem;
   border: 1px solid #222;
   background: #fff;
   color: #111;
   text-decoration: none;
-  padding: 0.5rem 0.75rem;
   cursor: pointer;
 }
 
 .button-link:hover,
 button:hover {
   background: #f3f3f3;
+}
+
+button[disabled] {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .button-link:focus,
@@ -143,20 +157,272 @@ a:focus {
   outline-offset: 2px;
 }
 
-.helper-text {
-  margin-bottom: 1rem;
-  color: #555;
-  font-size: 0.95rem;
+/* =========================
+   Status / Feedback
+   ========================= */
+
+.status-stack {
+  margin: 0.75rem 0 1rem;
+}
+
+.status-message {
+  min-height: 1.5rem;
+  margin: 0;
+}
+
+.error-message {
+  min-height: 1.5rem;
+  margin: 0.25rem 0 0;
+  color: #b00020;
+}
+
+/* =========================
+   Cards / Lists
+   ========================= */
+
+.card-list {
+  display: grid;
+  gap: 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  padding: 1rem;
+  border: 1px solid #ccc;
 }
 
 .generated-option {
-  border: 1px solid #ccc;
-  padding: 1rem;
   margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid #ccc;
 }
 
 .generated-option textarea {
   width: 100%;
   min-height: 6rem;
   margin-bottom: 0.75rem;
+}
+
+/* =========================
+   Asset / Media Preview
+   ========================= */
+
+.asset-preview {
+  width: min(100%, 320px);
+  margin-bottom: 1rem;
+}
+
+/* =========================
+   Instagram Preview
+   ========================= */
+
+.instagram-preview {
+  max-width: 420px;
+}
+
+.instagram-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.instagram-preview-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid #bbb;
+  border-radius: 999px;
+  background: #f6f6f6;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.instagram-preview-account {
+  margin: 0;
+  font-weight: 700;
+}
+
+.instagram-preview-label {
+  margin: 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.instagram-preview-media {
+  margin-bottom: 1rem;
+}
+
+.instagram-preview-body {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.instagram-preview-caption,
+.instagram-preview-hashtags {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.instagram-preview-hashtags {
+  color: #1a73e8;
+}
+
+/* =========================
+   Review / Two-Pane Layout
+   Used by Approvals, Schedules, Assets
+   ========================= */
+
+.approval-review-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 420px) 1fr;
+  align-items: start;
+  gap: 1.25rem;
+}
+
+.approval-preview-column,
+.approval-details-column {
+  min-width: 0;
+}
+
+.approval-preview-column {
+  padding-right: 1rem;
+  border-right: 1px solid #eee;
+}
+
+.approval-details-column {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.approval-preview-column p,
+.approval-details-column p {
+  margin-top: 0;
+}
+
+/* =========================
+   Action Rows / Tabs
+   ========================= */
+
+.approval-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tab-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.tab-button {
+  padding: 0.5rem 0.9rem;
+  border: 1px solid #ccc;
+  border-radius: 0.5rem;
+  background: #fff;
+  cursor: pointer;
+}
+
+.tab-button.active {
+  border-color: #333;
+  font-weight: 700;
+}
+
+/* =========================
+   Responsive
+   ========================= */
+@media (min-width: 800px) {
+  .generated-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 800px) {
+  .approval-review-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .approval-preview-column {
+    padding-right: 0;
+    border-right: 0;
+  }
+
+  .instagram-preview {
+    max-width: 100%;
+  }
+
+  .draft-preview-sticky {
+    position: static;
+  }
+}
+
+.draft-preview-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.draft-preview-hero .instagram-preview {
+  width: 100%;
+  max-width: 420px;
+}
+
+.draft-preview-sticky {
+  position: sticky;
+  top: 1rem;
+  z-index: 10;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.draft-generated {
+  max-width: 900px;
+  margin: 1.5rem auto;
+}
+
+.generated-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.schedule-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 1rem 0 1.5rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.schedule-toolbar-left {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.schedule-toolbar-right {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.schedule-toolbar-right button {
+  border-color: #b00020;
+}
+
+.button-danger {
+  border-color: #b00020;
+  color: #b00020;
+}
+
+.button-danger:hover {
+  background: #fff5f5;
 }

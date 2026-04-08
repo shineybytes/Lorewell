@@ -8,6 +8,8 @@ export type ApprovedPost = {
   hashtags_final: string[];
   accessibility_text: string;
   status: string;
+  asset_file_path: string | null;
+  asset_media_type: string | null;
 };
 
 export function listApprovedPosts() {

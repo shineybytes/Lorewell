@@ -1,15 +1,22 @@
 type StatusMessageProps = {
   status?: string;
   error?: string;
+  loading?: boolean;
 };
 
-export default function StatusMessage({ status, error }: StatusMessageProps) {
+export default function StatusMessage({
+  status,
+  error,
+  loading = false,
+}: StatusMessageProps) {
   return (
-    <>
-      <p role="status" aria-live="polite">
-        {status || ""}
+    <div className="status-stack">
+      <p role="status" aria-live="polite" className="status-message">
+        {loading ? `⏳ ${status || "Working..."}` : status || ""}
       </p>
-      <p role="alert">{error || ""}</p>
-    </>
+      <p role="alert" className="error-message">
+        {error || ""}
+      </p>
+    </div>
   );
 }

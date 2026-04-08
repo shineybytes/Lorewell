@@ -3,7 +3,7 @@ import Layout from "./components/Layout";
 import EventsPage from "./pages/EventsPage";
 import NewEventPage from "./pages/NewEventPage";
 import EventDetailPage from "./pages/EventDetailPage";
-import DraftEditorPage from "./pages/DraftEditorPage";
+import DraftEditorPage from "./pages/DraftsEditorPage";
 import DraftsPage from "./pages/DraftsPage";
 import ApprovalsPage from "./pages/ApprovalsPage";
 import SchedulesPage from "./pages/SchedulesPage";
@@ -33,14 +33,14 @@ export const router = createBrowserRouter([
         path: "drafts/editor",
         element: <DraftEditorPage />,
       },
-	  {
-		path: "approvals",
-		element: <ApprovalsPage />,
-	  },
-	  {
-		path: "schedules",
-		element: <SchedulesPage />,
-	  },
+      {
+        path: "approvals",
+        element: <ApprovalsPage />,
+      },
+      {
+        path: "schedules",
+        element: <SchedulesPage />,
+      },
     ],
   },
 ]);

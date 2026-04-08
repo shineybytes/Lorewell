@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { listEvents } from "../api/events";
+import { deleteEvent, listEvents } from "../api/events";
 import type { EventRecord } from "../types/api";
 import StatusMessage from "../components/StatusMessage";
 
@@ -59,9 +59,42 @@ export default function EventsPage() {
                 <p>
                   <strong>Date:</strong> {event.event_date || "Unknown"}
                 </p>
-                <Link className="button-link" to={`/events/${event.id}`}>
-                  Open Event
-                </Link>
+
+                <div className="approval-action-row">
+                  <Link className="button-link" to={`/events/${event.id}`}>
+                    Open Event
+                  </Link>
+
+                  <button
+                    type="button"
+                    className="button-danger"
+                    onClick={async () => {
+                      if (
+                        !confirm(
+                          "Delete this event? This may affect related assets and drafts.",
+                        )
+                      ) {
+                        return;
+                      }
+
+                      try {
+                        await deleteEvent(event.id);
+                        setEvents((prev) =>
+                          prev.filter((e) => e.id !== event.id),
+                        );
+                      } catch (err) {
+                        console.error(err);
+                        alert(
+                          err instanceof Error
+                            ? err.message
+                            : "Failed to delete event.",
+                        );
+                      }
+                    }}
+                  >
+                    Delete Event
+                  </button>
+                </div>
               </article>
             </li>
           ))}

@@ -26,10 +26,65 @@ into:
 ### Current flow:
 1. Create event
 2. Upload asset
-3. Create scheduled post
-4. Generate caption package with OpenAI
-5. Approve post
-6. Scheduler publishes to Instagram through Meta Graph API
+3. Create draft from asset
+4. Generate caption options (optionally seeded)
+5. Edit and finalize caption, hashtags, and accessibility text
+6. Send to approvals (creates approved snapshot)
+7. Schedule post from approved content
+8. Scheduler publishes to Instagram through Meta Graph API
+
+## Failure Handling and Recovery
+
+If a scheduled post fails:
+
+- The schedule is marked as `failed`
+- An error message is stored and visible in the UI
+
+Users can:
+
+- Retry publishing
+  → creates a new schedule attempt
+
+- Archive failure
+  → marks the failure as acknowledged
+
+- Restore failure
+  → returns it to the active queue
+
+Failures are never silently discarded.
+
+## Scheduling Model
+
+Schedules are created from approved posts:
+
+POST /approved-posts/{id}/schedule
+
+Schedules cannot be created directly.
+
+This ensures:
+- only finalized content is scheduled
+- no incomplete drafts are published
+- schedules always reference a stable snapshot
+
+## Deletion Rules
+
+| Object | Behavior |
+|--------|--------|
+| Draft  | Can always be deleted |
+| Asset  | Cannot be deleted if used by a post |
+| Event  | Cannot be deleted if it contains assets |
+
+Deletion is intentionally constrained to prevent data inconsistency.
+
+## Caption Generation
+
+Draft generation supports optional seeding:
+
+- User-provided caption can be used as a base
+- AI generates variations based on:
+  - brand voice
+  - CTA goal
+  - generation notes
 
 ## Current MVP stack
 

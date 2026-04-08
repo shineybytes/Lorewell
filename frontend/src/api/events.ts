@@ -22,3 +22,8 @@ export function createEvent(payload: EventCreatePayload) {
 export function listTimezones() {
   return fetchJson<string[]>("/timezones");
 }
+export function deleteEvent(eventId: number) {
+  return fetchJson(`/events/${eventId}`, {
+    method: "DELETE",
+  });
+}

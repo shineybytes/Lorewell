@@ -88,13 +88,15 @@ class PostDraftCreateResponse(BaseModel):
     post_id: int
     status: str
 
+class PostGenerateRequest(BaseModel):
+    seed_caption: str | None = None
 
 class PostGenerationResponse(BaseModel):
     post_id: int
     status: str
-    caption_short: str | None = None
-    caption_medium: str | None = None
-    caption_long: str | None = None
+    caption_option_1: str | None = None
+    caption_option_2: str | None = None
+    caption_option_3: str | None = None
     hashtags: list[str] = Field(default_factory=list)
     accessibility_text: str | None = None
     seo_keywords: list[str] = Field(default_factory=list)

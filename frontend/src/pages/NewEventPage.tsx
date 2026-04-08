@@ -18,7 +18,9 @@ export default function NewEventPage() {
 
         const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
         if (data.includes(browserTz)) {
-          const select = document.getElementById("event-timezone") as HTMLSelectElement | null;
+          const select = document.getElementById(
+            "event-timezone",
+          ) as HTMLSelectElement | null;
           if (select) {
             select.value = browserTz;
           }
@@ -42,12 +44,16 @@ export default function NewEventPage() {
     const eventTimezone = String(formData.get("event_timezone") || "").trim();
 
     if (eventDate && !eventTimezone) {
-      setError("If you provide an event date/time, you must also provide a timezone.");
+      setError(
+        "If you provide an event date/time, you must also provide a timezone.",
+      );
       return;
     }
 
     if (!eventDate && eventTimezone) {
-      setError("If you provide a timezone, you must also provide an event date/time.");
+      setError(
+        "If you provide a timezone, you must also provide an event date/time.",
+      );
       return;
     }
 
@@ -63,7 +69,8 @@ export default function NewEventPage() {
         recap: String(formData.get("recap") || "").trim() || null,
         keywords: String(formData.get("keywords") || "").trim() || null,
         vendors: String(formData.get("vendors") || "").trim() || null,
-        event_guidance: String(formData.get("event_guidance") || "").trim() || null,
+        event_guidance:
+          String(formData.get("event_guidance") || "").trim() || null,
       });
 
       navigate(`/events/${created.id}`);
