@@ -110,7 +110,18 @@ Confirm:
   - [ ] Timezone
   - [ ] Status
 
-## 9. Real Publishing Flow (Optional but Recommended)
+## 9. Scheduling UX Enhancements
+- [ ] Retry button visible on failed items
+- [ ] Archive/Restore buttons visible
+- [ ] Sorting works (Newest/Oldest)
+- [ ] Tabs filter correctly:
+  - [ ] Future
+  - [ ] Past
+  - [ ] Recent
+  - [ ] Needs Attention
+  - [ ] Archived
+
+## 10. Real Publishing Flow (Optional but Recommended)
 - [ ] cloudflared (or similar) tunnel is active
 - [ ] `APP_BASE_URL` is public
 - [ ] Schedule post ~1–2 minutes ahead
@@ -121,19 +132,22 @@ Confirm:
 - [ ] Instagram post appears if successful
 - [ ] Failure is visible if not successful
 
-## 10. Failure Handling
+## 11. Failure Handling
 - [ ] Failed schedules show visible status
 - [ ] Error message is visible or retrievable
 - [ ] App does NOT fail silently
 - [ ] UI remains usable after failure
+- [ ] Retry publishing works
+- [ ] Archive moves item out of active queue
+- [ ] Restore returns item to active queue
 
-## 11. State Feedback and Loading
+## 12. State Feedback and Loading
 - [ ] Actions show loading state
 - [ ] UI does not feel unresponsive
 - [ ] Status updates are visible after navigation
 - [ ] No stale UI after successful actions
 
-## 12. Accessibility Sanity Pass
+## 13. Accessibility Sanity Pass
 - [ ] All inputs have labels
 - [ ] Tab navigation works
 - [ ] Focus indicators are visible
@@ -143,7 +157,7 @@ Confirm:
 - [ ] No color-only communication
 - [ ] Images have alt text when applicable
 
-## 13. Responsive Sanity Pass
+## 14. Responsive Sanity Pass
 - [ ] Test at smaller width:
   - [ ] Navigation is usable
   - [ ] Forms do not overflow
@@ -151,7 +165,7 @@ Confirm:
   - [ ] Cards stack properly
   - [ ] Textareas are usable
 
-## 14. Console Check
+## 15. Console Check
 - [ ] No red errors on load
 - [ ] No red errors on navigation
 - [ ] No red errors on:

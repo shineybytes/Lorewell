@@ -665,7 +665,7 @@ def retry_schedule(schedule_id: int, db: Session = Depends(get_db)):
 
     new_schedule = Schedule(
         approved_post_id=schedule.approved_post_id,
-        publish_at=datetime.utcnow(),
+        publish_at=datetime.now(UTC).replace(tzinfo=None),
         publish_timezone=schedule.publish_timezone,
         status="scheduled",
         error_message=None,
