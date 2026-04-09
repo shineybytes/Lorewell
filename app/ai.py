@@ -8,6 +8,7 @@ from openai import OpenAI
 
 from app.config import settings
 from app.models import Asset, Event, Post
+from app.video_analysis import extract_keyframes
 
 
 client = OpenAI(api_key=settings.openai_api_key)
@@ -28,7 +29,22 @@ def _to_data_url(path: str) -> str:
     b64 = base64.b64encode(file_path.read_bytes()).decode("utf-8")
     return f"data:{mime};base64,{b64}"
 
-def _build_generation_prompt(event, asset, post, seed_caption: str | None = None) -> str:
+
+def _json_response_from_content(content: list[dict]) -> dict:
+    response = client.responses.create(
+        model=settings.openai_model,
+        input=[{"role": "user", "content": content}],
+        text={"format": {"type": "json_object"}},
+    )
+    return json.loads(response.output_text)
+
+
+def _build_generation_prompt(
+    event,
+    asset,
+    post,
+    seed_caption: str | None = None,
+) -> str:
     event_bits = []
     if event:
         event_bits.append(f"Event Title: {event.title}")
@@ -93,16 +109,22 @@ Rules:
 - visual_summary should be concise and useful for internal reference
 """.strip()
 
+
 def generate_caption_package(
     event: Event | None,
     asset: Asset,
     post: Post,
-    seed_caption: str | None = None
+    seed_caption: str | None = None,
 ) -> dict:
     content = [
         {
             "type": "input_text",
-            "text": _build_generation_prompt(event=event, asset=asset, post=post, seed_caption=seed_caption),
+            "text": _build_generation_prompt(
+                event=event,
+                asset=asset,
+                post=post,
+                seed_caption=seed_caption,
+            ),
         }
     ]
 
@@ -114,16 +136,13 @@ def generate_caption_package(
             }
         )
 
-    response = client.responses.create(
-        model=settings.openai_model,
-        input=[{"role": "user", "content": content}],
-        text={"format": {"type": "json_object"}},
-    )
-
-    return json.loads(response.output_text)
+    return _json_response_from_content(content)
 
 
-def analyze_media(file_path: str, media_type: str, user_correction: str | None = None) -> dict:
+def _analyze_single_image(
+    file_path: str,
+    user_correction: str | None = None,
+) -> dict:
     correction_text = user_correction or ""
     content = [
         {
@@ -141,34 +160,84 @@ Rules:
 - accessibility_text should clearly describe what is visible
 - keep both outputs specific and grounded in the media
 """.strip(),
+        },
+        {
+            "type": "input_image",
+            "image_url": _to_data_url(file_path),
+        },
+    ]
+
+    return _json_response_from_content(content)
+
+
+def _analyze_video(
+    file_path: str,
+    user_correction: str | None = None,
+) -> dict:
+    frame_paths = extract_keyframes(file_path, frame_count=3)
+
+    content: list[dict] = [
+        {
+            "type": "input_text",
+            "text": f"""
+Analyze these sampled frames from a short video and return JSON only with these keys:
+visual_summary, accessibility_text
+
+User correction or clarification:
+{user_correction or ""}
+
+Rules:
+- Treat these images as representative frames from one continuous clip
+- Infer the likely overall action, subject, setting, and vibe of the video
+- Do not describe each frame separately unless necessary
+- Treat the user correction as important context if provided
+- visual_summary should be short and useful for internal reference
+- accessibility_text should clearly describe what is visible in the overall clip
+- keep both outputs specific and grounded in the sampled frames
+""".strip(),
         }
     ]
 
-    if media_type == "image":
+    for frame_path in frame_paths:
         content.append(
             {
                 "type": "input_image",
-                "image_url": _to_data_url(file_path),
+                "image_url": _to_data_url(frame_path),
             }
         )
-    else:
-        cleaned_correction = (user_correction or "").strip()
 
-        if cleaned_correction:
+    return _json_response_from_content(content)
+
+
+def analyze_media(
+    file_path: str,
+    media_type: str,
+    user_correction: str | None = None,
+) -> dict:
+    if media_type == "image":
+        return _analyze_single_image(
+            file_path,
+            user_correction=user_correction,
+        )
+
+    if media_type == "video":
+        try:
+            return _analyze_video(
+                file_path,
+                user_correction=user_correction,
+            )
+        except Exception:
+            cleaned_correction = (user_correction or "").strip()
+
+            if cleaned_correction:
+                return {
+                    "visual_summary": cleaned_correction,
+                    "accessibility_text": cleaned_correction,
+                }
+
             return {
-                "visual_summary": cleaned_correction,
-                "accessibility_text": cleaned_correction,
+                "visual_summary": "Video uploaded. Automatic video analysis failed.",
+                "accessibility_text": "Video uploaded. Add a manual description in Corrections to generate accessibility text.",
             }
 
-        return {
-            "visual_summary": f"Video uploaded. Manual description needed.",
-            "accessibility_text": f"Video uploaded. Add a manual description in Corrections to generate accessibility text.",
-        }
-
-    response = client.responses.create(
-        model=settings.openai_model,
-        input=[{"role": "user", "content": content}],
-        text={"format": {"type": "json_object"}},
-    )
-
-    return json.loads(response.output_text)
+    raise ValueError(f"Unsupported media_type: {media_type}")

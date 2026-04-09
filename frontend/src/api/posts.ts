@@ -80,3 +80,19 @@ export function deletePost(postId: number) {
     method: "DELETE",
   });
 }
+export function saveDraftContent(
+  postId: number,
+  payload: {
+    draft_caption_current: string;
+    draft_hashtags_current: string;
+    draft_accessibility_current: string;
+  },
+) {
+  return fetchJson(`/posts/${postId}/draft-content`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+}

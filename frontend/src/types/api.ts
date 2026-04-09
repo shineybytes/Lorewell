@@ -54,6 +54,9 @@ export type PostRecord = {
   generated_caption_options?: string | null;
   generated_hashtag_options?: string | null;
   generated_accessibility_options?: string | null;
+  draft_caption_current?: string | null;
+  draft_hashtags_current?: string | null;
+  draft_accessibility_current?: string | null;
   approved_caption_final?: string | null;
   approved_hashtags_final?: string | null;
   approved_accessibility_text?: string | null;

@@ -28,6 +28,7 @@ from app.schemas import (
         PostDraftCreate,
         PostDraftCreateResponse,
         PostDraftUpdate,
+        PostDraftContentUpdate,
         PostGenerateRequest,
         PostGenerationResponse,
         ScheduleCreate,
@@ -553,6 +554,9 @@ def get_post(post_id: int, db: Session = Depends(get_db)):
         "approved_caption_final": approved.caption_final if approved else None,
         "approved_hashtags_final": approved.hashtags_final if approved else None,
         "approved_accessibility_text": approved.accessibility_text if approved else None,
+        "draft_caption_current": post.draft_caption_current,
+        "draft_hashtags_current": post.draft_hashtags_current,
+        "draft_accessibility_current": post.draft_accessibility_current,
         "status": post.status,
         "error_message": post.error_message,
         "created_at": post.created_at.isoformat(),
@@ -747,3 +751,29 @@ def delete_event(event_id: int, db: Session = Depends(get_db)):
     db.delete(event)
     db.commit()
     return {"status": "deleted"}
+
+@app.patch("/posts/{post_id}/draft-content")
+def update_post_draft_content(
+    post_id: int,
+    payload: PostDraftContentUpdate,
+    db: Session = Depends(get_db),
+):
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    post.draft_caption_current = payload.draft_caption_current
+    post.draft_hashtags_current = payload.draft_hashtags_current
+    post.draft_accessibility_current = payload.draft_accessibility_current
+
+    db.add(post)
+    db.commit()
+    db.refresh(post)
+
+    return {
+        "post_id": post.id,
+        "status": post.status,
+        "draft_caption_current": post.draft_caption_current,
+        "draft_hashtags_current": post.draft_hashtags_current,
+        "draft_accessibility_current": post.draft_accessibility_current,
+    }

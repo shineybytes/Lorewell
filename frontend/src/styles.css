@@ -426,3 +426,27 @@ a:focus {
 .button-danger:hover {
   background: #fff5f5;
 }
+
+.token-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.token-chip {
+  display: inline-block;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 999px;
+  background: #f7f7f7;
+  line-height: 1.2;
+}
+
+.token-chip-button {
+  cursor: pointer;
+  background: #fff;
+}
+
+.token-chip-button:hover {
+  background: #f3f3f3;
+}

@@ -192,6 +192,10 @@ class Post(Base):
     generated_hashtag_options: Mapped[str | None] = mapped_column(Text, nullable=True)
     generated_accessibility_options: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    draft_caption_current: Mapped[str | None] = mapped_column(Text, nullable=True)
+    draft_hashtags_current: Mapped[str | None] = mapped_column(Text, nullable=True)
+    draft_accessibility_current: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     status: Mapped[str] = mapped_column(String(30), default="draft")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))

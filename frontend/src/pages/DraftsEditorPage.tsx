@@ -7,6 +7,7 @@ import {
   createPost,
   generatePost,
   getPost,
+  saveDraftContent,
   updatePost,
 } from "../api/posts";
 import type {
@@ -50,6 +51,7 @@ export default function DraftEditorPage() {
   const loadState = useAsyncState();
   const generateState = useAsyncState();
   const approvalState = useAsyncState();
+  const saveState = useAsyncState();
 
   const contextMissing = useMemo(() => {
     return !numericPostId && (!numericEventId || !numericAssetId);
@@ -106,16 +108,19 @@ export default function DraftEditorPage() {
         if (loadedPost) {
           setFinalCaption(
             loadedPost.approved_caption_final ||
+              loadedPost.draft_caption_current ||
               loadedPost.generated_caption_options ||
               "",
           );
           setFinalHashtags(
             loadedPost.approved_hashtags_final ||
+              loadedPost.draft_hashtags_current ||
               loadedPost.generated_hashtag_options ||
               "",
           );
           setFinalAccessibility(
             loadedPost.approved_accessibility_text ||
+              loadedPost.draft_accessibility_current ||
               loadedPost.generated_accessibility_options ||
               "",
           );
@@ -136,6 +141,52 @@ export default function DraftEditorPage() {
   function useCaption(text: string) {
     setFinalCaption(text);
   }
+
+  function parseHashtags(value: string): string[] {
+    return value
+      .split(/\s+/)
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+  }
+
+  function normalizeHashtag(tag: string): string {
+    const cleaned = tag
+      .trim()
+      .replace(/^#+/, "")
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}_]+/gu, "");
+
+    return cleaned ? `#${cleaned}` : "";
+  }
+
+  function keywordToHashtag(keyword: string): string {
+    return normalizeHashtag(keyword.replace(/\s+/g, ""));
+  }
+
+  function addHashtag(tag: string) {
+    const normalized = normalizeHashtag(tag);
+    if (!normalized) return;
+
+    const existing = parseHashtags(finalHashtags).map(normalizeHashtag);
+    if (existing.includes(normalized)) return;
+
+    const next = [...parseHashtags(finalHashtags), normalized].join(" ").trim();
+    setFinalHashtags(next);
+  }
+
+  const selectedHashtagSet = useMemo(() => {
+    return new Set(parseHashtags(finalHashtags).map(normalizeHashtag));
+  }, [finalHashtags]);
+
+  const suggestedHashtags = useMemo(() => {
+    if (!generated?.seo_keywords?.length) return [];
+
+    return generated.seo_keywords
+      .map(keywordToHashtag)
+      .filter(Boolean)
+      .filter((tag, index, arr) => arr.indexOf(tag) === index)
+      .filter((tag) => !selectedHashtagSet.has(tag));
+  }, [generated, selectedHashtagSet]);
 
   async function runGenerate(seedCaption?: string) {
     try {
@@ -174,14 +225,24 @@ export default function DraftEditorPage() {
       const generatedResult = await generatePost(resolvedPostId, seedCaption);
       setGenerated(generatedResult);
 
-      setFinalCaption(
+      const nextCaption =
         generatedResult.caption_option_2 ||
-          generatedResult.caption_option_3 ||
-          generatedResult.caption_option_1 ||
-          "",
-      );
-      setFinalHashtags((generatedResult.hashtags || []).join(" "));
-      setFinalAccessibility(generatedResult.accessibility_text || "");
+        generatedResult.caption_option_3 ||
+        generatedResult.caption_option_1 ||
+        "";
+
+      const nextHashtags = (generatedResult.hashtags || []).join(" ");
+      const nextAccessibility = generatedResult.accessibility_text || "";
+
+      setFinalCaption(nextCaption);
+      setFinalHashtags(nextHashtags);
+      setFinalAccessibility(nextAccessibility);
+
+      await saveDraftContent(resolvedPostId, {
+        draft_caption_current: nextCaption,
+        draft_hashtags_current: nextHashtags,
+        draft_accessibility_current: nextAccessibility,
+      });
 
       generateState.succeed(
         seedCaption ? "Caption variants generated." : "Draft generated.",
@@ -206,6 +267,32 @@ export default function DraftEditorPage() {
     }
 
     await runGenerate(finalCaption.trim());
+  }
+
+  async function handleSaveDraft() {
+    const resolvedPostId = numericPostId || generated?.post_id;
+
+    if (!resolvedPostId) {
+      saveState.fail("Generate or create a draft before saving.");
+      return;
+    }
+
+    try {
+      saveState.start("Saving draft...");
+
+      await saveDraftContent(resolvedPostId, {
+        draft_caption_current: finalCaption,
+        draft_hashtags_current: finalHashtags,
+        draft_accessibility_current: finalAccessibility,
+      });
+
+      saveState.succeed("Draft saved.");
+    } catch (err) {
+      console.error(err);
+      saveState.fail(
+        err instanceof Error ? err.message : "Failed to save draft.",
+      );
+    }
   }
 
   async function handleSendToApprovals() {
@@ -273,79 +360,120 @@ export default function DraftEditorPage() {
       <section aria-labelledby="generated-heading" className="draft-generated">
         <h3 id="generated-heading">Generated Draft</h3>
 
-        {!generated ? (
-          <p>No generated draft yet.</p>
+        {generated ? (
+          <section>
+            <h4>Generated Caption Options</h4>
+
+            <div className="generated-grid">
+              {[
+                {
+                  label: "Caption Option 1",
+                  value: generated.caption_option_1,
+                },
+                {
+                  label: "Caption Option 2",
+                  value: generated.caption_option_2,
+                },
+                {
+                  label: "Caption Option 3",
+                  value: generated.caption_option_3,
+                },
+              ]
+                .filter((option) => option.value)
+                .map((option) => (
+                  <div className="generated-option" key={option.label}>
+                    <h5>{option.label}</h5>
+                    <textarea readOnly value={option.value} />
+                    <button
+                      type="button"
+                      onClick={() => useCaption(option.value)}
+                    >
+                      Use This Caption
+                    </button>
+                  </div>
+                ))}
+            </div>
+          </section>
         ) : (
-          <>
-            <section>
-              <h4>Generated Caption Options</h4>
+          <p>No generated draft yet.</p>
+        )}
 
-              <div className="generated-grid">
-                {[
-                  {
-                    label: "Caption Option 1",
-                    value: generated.caption_option_1,
-                  },
-                  {
-                    label: "Caption Option 2",
-                    value: generated.caption_option_2,
-                  },
-                  {
-                    label: "Caption Option 3",
-                    value: generated.caption_option_3,
-                  },
-                ]
-                  .filter((option) => option.value)
-                  .map((option) => (
-                    <div className="generated-option" key={option.label}>
-                      <h5>{option.label}</h5>
-                      <textarea readOnly value={option.value} />
-                      <button
-                        type="button"
-                        onClick={() => useCaption(option.value)}
-                      >
-                        Use This Caption
-                      </button>
-                    </div>
+        {(finalCaption || finalHashtags || finalAccessibility) && (
+          <section>
+            <h4>Finalize Draft</h4>
+            <p className="helper-text">
+              You can keep editing this in Drafts. When ready, send it to
+              Approvals.
+            </p>
+
+            <div className="form-row">
+              <label htmlFor="final-caption">Final Caption</label>
+              <textarea
+                id="final-caption"
+                value={finalCaption}
+                onChange={(e) => setFinalCaption(e.target.value)}
+              />
+            </div>
+
+            <div className="form-row">
+              <label htmlFor="final-hashtags">Final Hashtags</label>
+              <textarea
+                id="final-hashtags"
+                value={finalHashtags}
+                onChange={(e) => setFinalHashtags(e.target.value)}
+              />
+            </div>
+
+            {parseHashtags(finalHashtags).length > 0 && (
+              <div className="form-row">
+                <label>Current Hashtags</label>
+                <div className="token-row">
+                  {parseHashtags(finalHashtags).map((tag) => (
+                    <span key={tag} className="token-chip">
+                      {normalizeHashtag(tag)}
+                    </span>
                   ))}
+                </div>
               </div>
-            </section>
+            )}
 
-            <section>
-              <h4>Finalize Draft</h4>
-              <p className="helper-text">
-                You can keep editing this in Drafts. When ready, send it to
-                Approvals.
-              </p>
-
+            {suggestedHashtags.length > 0 && (
               <div className="form-row">
-                <label htmlFor="final-caption">Final Caption</label>
-                <textarea
-                  id="final-caption"
-                  value={finalCaption}
-                  onChange={(e) => setFinalCaption(e.target.value)}
-                />
+                <label>Other Hashtags?</label>
+                <div className="token-row">
+                  {suggestedHashtags.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      className="token-chip token-chip-button"
+                      onClick={() => addHashtag(tag)}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
               </div>
+            )}
 
-              <div className="form-row">
-                <label htmlFor="final-hashtags">Final Hashtags</label>
-                <textarea
-                  id="final-hashtags"
-                  value={finalHashtags}
-                  onChange={(e) => setFinalHashtags(e.target.value)}
-                />
-              </div>
+            <div className="form-row">
+              <label htmlFor="final-accessibility">
+                Final Accessibility Text
+              </label>
+              <textarea
+                id="final-accessibility"
+                value={finalAccessibility}
+                onChange={(e) => setFinalAccessibility(e.target.value)}
+              />
+            </div>
 
-              <div className="form-row">
-                <label htmlFor="final-accessibility">
-                  Final Accessibility Text
-                </label>
-                <textarea
-                  id="final-accessibility"
-                  value={finalAccessibility}
-                  onChange={(e) => setFinalAccessibility(e.target.value)}
-                />
-              </div>
+            <div className="approval-action-row">
+              <button
+                type="button"
+                disabled={saveState.loading}
+                onClick={handleSaveDraft}
+              >
+                {saveState.loading ? "Saving..." : "Save Draft"}
+              </button>
 
               <button
                 type="button"
@@ -354,14 +482,20 @@ export default function DraftEditorPage() {
               >
                 {approvalState.loading ? "Sending..." : "Send to Approvals"}
               </button>
+            </div>
 
-              <StatusMessage
-                loading={approvalState.loading}
-                status={approvalState.status}
-                error={approvalState.error}
-              />
-            </section>
-          </>
+            <StatusMessage
+              loading={saveState.loading}
+              status={saveState.status}
+              error={saveState.error}
+            />
+
+            <StatusMessage
+              loading={approvalState.loading}
+              status={approvalState.status}
+              error={approvalState.error}
+            />
+          </section>
         )}
       </section>
 

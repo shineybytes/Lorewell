@@ -91,6 +91,11 @@ class PostDraftCreateResponse(BaseModel):
 class PostGenerateRequest(BaseModel):
     seed_caption: str | None = None
 
+class PostDraftContentUpdate(BaseModel):
+    draft_caption_current: str | None = None
+    draft_hashtags_current: str | None = None
+    draft_accessibility_current: str | None = None
+
 class PostGenerationResponse(BaseModel):
     post_id: int
     status: str

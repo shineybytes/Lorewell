@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, v0.7-the-grand-budapest]
+    branches: [main, v0.8-truman-show]
   pull_request:
 
 jobs:
