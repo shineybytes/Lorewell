@@ -51,7 +51,30 @@ Confirm:
 - [ ] Vision summary is shown
 - [ ] Accessibility text is shown
 
-## 4. Asset Correction Workflow
+## 4. Asset Library
+
+- [ ] Upload asset without event
+- [ ] Asset appears in Asset Library
+- [ ] Asset preview renders (image/video)
+- [ ] Asset can be renamed
+- [ ] Asset can be reassigned to event
+- [ ] Asset can be unassigned from event
+- [ ] Reassignment prompts for reanalysis
+- [ ] Proposed analysis can be generated
+- [ ] Proposed vs current analysis can be compared
+- [ ] User can:
+  - [ ] Keep current
+  - [ ] Use proposed
+  - [ ] Apply edited merge
+- [ ] Asset delete works for unused assets
+- [ ] Asset delete is blocked if in use
+- [ ] Sorting works:
+  - [ ] Newest
+  - [ ] Oldest
+  - [ ] Name A–Z
+  - [ ] Name Z–A
+
+## 5. Asset Correction Workflow
 - [ ] Correction textarea is editable
 - [ ] Clicking Reanalyze shows visible feedback
 - [ ] Updated result appears after reanalyze
@@ -60,7 +83,7 @@ Confirm:
 - [ ] No page refresh required to see updates
 - [ ] No console errors during actions
 
-## 5. Draft Creation Flow
+## 6. Draft Creation Flow
 - [ ] `Create Post from Asset` navigates correctly
 - [ ] Event context displays correctly
 - [ ] Asset preview displays correctly
@@ -74,7 +97,7 @@ Confirm:
 - [ ] Final Hashtags are editable
 - [ ] Final Accessibility Text is editable
 
-## 6. Draft Persistence
+## 7. Draft Persistence
 - [ ] Generate draft
 - [ ] Leave page
 - [ ] Draft appears in Drafts
@@ -85,7 +108,7 @@ Confirm:
 - [ ] Regenerate reflects updated inputs
 - [ ] No unexpected data loss
 
-## 7. Approval Flow
+## 8. Approval Flow
 - [ ] `Send to Approvals` works
 - [ ] Action gives visible feedback
 - [ ] Draft disappears from Drafts
@@ -94,7 +117,7 @@ Confirm:
 - [ ] Hashtags match
 - [ ] Accessibility text matches
 
-## 8. Scheduling Flow
+## 9. Scheduling Flow
 - [ ] Approved post appears in Approvals
 - [ ] Date/time input works
 - [ ] Timezone dropdown loads
@@ -109,8 +132,11 @@ Confirm:
   - [ ] Publish time
   - [ ] Timezone
   - [ ] Status
+- [ ] Unschedule button appears for scheduled items
+- [ ] Unschedule removes item from schedule list
+- [ ] Cannot unschedule published item
 
-## 9. Scheduling UX Enhancements
+## 10. Scheduling UX Enhancements
 - [ ] Retry button visible on failed items
 - [ ] Archive/Restore buttons visible
 - [ ] Sorting works (Newest/Oldest)
@@ -121,7 +147,7 @@ Confirm:
   - [ ] Needs Attention
   - [ ] Archived
 
-## 10. Real Publishing Flow (Optional but Recommended)
+## 11. Real Publishing Flow (Optional but Recommended)
 - [ ] cloudflared (or similar) tunnel is active
 - [ ] `APP_BASE_URL` is public
 - [ ] Schedule post ~1–2 minutes ahead
@@ -132,7 +158,7 @@ Confirm:
 - [ ] Instagram post appears if successful
 - [ ] Failure is visible if not successful
 
-## 11. Failure Handling
+## 12. Failure Handling
 - [ ] Failed schedules show visible status
 - [ ] Error message is visible or retrievable
 - [ ] App does NOT fail silently
@@ -141,13 +167,13 @@ Confirm:
 - [ ] Archive moves item out of active queue
 - [ ] Restore returns item to active queue
 
-## 12. State Feedback and Loading
+## 13. State Feedback and Loading
 - [ ] Actions show loading state
 - [ ] UI does not feel unresponsive
 - [ ] Status updates are visible after navigation
 - [ ] No stale UI after successful actions
 
-## 13. Accessibility Sanity Pass
+## 14. Accessibility Sanity Pass
 - [ ] All inputs have labels
 - [ ] Tab navigation works
 - [ ] Focus indicators are visible
@@ -157,7 +183,7 @@ Confirm:
 - [ ] No color-only communication
 - [ ] Images have alt text when applicable
 
-## 14. Responsive Sanity Pass
+## 15. Responsive Sanity Pass
 - [ ] Test at smaller width:
   - [ ] Navigation is usable
   - [ ] Forms do not overflow
@@ -165,7 +191,7 @@ Confirm:
   - [ ] Cards stack properly
   - [ ] Textareas are usable
 
-## 15. Console Check
+## 16. Console Check
 - [ ] No red errors on load
 - [ ] No red errors on navigation
 - [ ] No red errors on:
@@ -175,11 +201,10 @@ Confirm:
   - [ ] Schedule
 
 # Minimum Release Path (Required)
-
 This is the required end-to-end flow before release:
 
 - [ ] Create Event
-- [ ] Upload Asset
+- [ ] Upload Asset (with or without event)
 - [ ] Reanalyze or approve accessibility
 - [ ] Create Draft
 - [ ] Generate Draft
@@ -189,6 +214,16 @@ This is the required end-to-end flow before release:
 - [ ] Confirm it appears in Schedules
 
 If any step fails, release is blocked.
+
+## Alternate Valid Flow (Asset-first)
+We're moving towards Asset as first-class objects, so here is the alternate workflow.
+
+- [ ] Upload Asset (no event)
+- [ ] Create Draft from Asset
+- [ ] Create Event
+- [ ] Attach Asset to Event
+- [ ] Confirm reanalysis prompt appears
+- [ ] Continue standard flow
 
 ## Release Blockers
 
