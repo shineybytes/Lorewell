@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { listPosts } from "../api/posts";
-import { deletePost } from "../api/posts";
+import { deletePost, listPosts } from "../api/posts";
 import type { PostRecord } from "../types/api";
 import StatusMessage from "../components/StatusMessage";
 
-function formatDate(isoString: string) {
+function formatDate(isoString: string | null | undefined) {
+  if (!isoString) return "Unknown";
+
   const date = new Date(isoString);
   if (Number.isNaN(date.getTime())) return isoString;
+
   return date.toLocaleString();
 }
 
@@ -57,19 +59,30 @@ export default function DraftsPage() {
           {drafts.map((draft) => (
             <li key={draft.id}>
               <article className="card">
-                <h3>Draft #{draft.id}</h3>
+                <h3>
+                  {draft.working_title ||
+                    `${draft.event_title || "Untitled Event"} Draft`}{" "}
+                  — {formatDate(draft.event_date)}
+                </h3>
+
                 <p>
                   <strong>Status:</strong> {draft.status}
                 </p>
                 <p>
-                  <strong>Event:</strong> {draft.event_id ?? "None"}
-                </p>
-                <p>
-                  <strong>Asset:</strong> {draft.asset_id}
+                  <strong>Asset:</strong>{" "}
+                  {draft.asset_filename ||
+                    (draft.asset_id ? `Asset #${draft.asset_id}` : "None")}
                 </p>
                 <p>
                   <strong>Created:</strong> {formatDate(draft.created_at)}
                 </p>
+
+                {draft.draft_caption_current && (
+                  <p>
+                    <strong>Draft Caption:</strong>{" "}
+                    {draft.draft_caption_current}
+                  </p>
+                )}
 
                 <div className="approval-action-row">
                   <Link
@@ -87,8 +100,6 @@ export default function DraftsPage() {
 
                       try {
                         await deletePost(draft.id);
-
-                        // remove locally (faster UX than full reload)
                         setDrafts((prev) =>
                           prev.filter((d) => d.id !== draft.id),
                         );

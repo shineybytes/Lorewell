@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getEvent } from "../api/events";
-import { listEventAssets } from "../api/assets";
+import { getAsset } from "../api/assets";
 import {
   approvePost,
   createPost,
@@ -15,11 +15,18 @@ import type {
   EventRecord,
   PostGenerationResponse,
   PostRecord,
+  VendorEntry,
 } from "../types/api";
 import StatusMessage from "../components/StatusMessage";
 import AssetPreview from "../components/AssetPreview";
 import { useAsyncState } from "../hooks/useAsyncState";
 import InstagramPreview from "../components/InstagramPreview";
+import CreditsEditor, {
+  buildCreditsText,
+  parseVendorEntries,
+  presetToTemplate,
+  type CreditStylePreset,
+} from "../components/CreditsEditor";
 
 export default function DraftEditorPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -40,6 +47,7 @@ export default function DraftEditorPage() {
   const [brandVoice, setBrandVoice] = useState("");
   const [ctaGoal, setCtaGoal] = useState("");
   const [generationNotes, setGenerationNotes] = useState("");
+  const [workingTitle, setWorkingTitle] = useState("");
 
   const [generated, setGenerated] = useState<PostGenerationResponse | null>(
     null,
@@ -48,14 +56,20 @@ export default function DraftEditorPage() {
   const [finalHashtags, setFinalHashtags] = useState("");
   const [finalAccessibility, setFinalAccessibility] = useState("");
 
+  const [creditEntries, setCreditEntries] = useState<VendorEntry[]>([
+    { role: "", instagram: "" },
+  ]);
+  const [creditPreset, setCreditPreset] = useState<CreditStylePreset>("by");
+  const [creditTemplate, setCreditTemplate] = useState("{role} by {handle}");
+
   const loadState = useAsyncState();
   const generateState = useAsyncState();
   const approvalState = useAsyncState();
   const saveState = useAsyncState();
 
   const contextMissing = useMemo(() => {
-    return !numericPostId && (!numericEventId || !numericAssetId);
-  }, [numericPostId, numericEventId, numericAssetId]);
+    return !numericPostId && !numericAssetId;
+  }, [numericPostId, numericAssetId]);
 
   useEffect(() => {
     async function load() {
@@ -83,26 +97,30 @@ export default function DraftEditorPage() {
           setGenerationNotes(loadedPost.generation_notes || "");
         }
 
-        if (!resolvedEventId || !resolvedAssetId) {
-          loadState.fail("Draft is missing event or asset context.");
+        if (!resolvedAssetId) {
+          loadState.fail("Draft is missing asset context.");
           return;
         }
 
-        const [eventData, assetData] = await Promise.all([
-          getEvent(resolvedEventId),
-          listEventAssets(resolvedEventId),
-        ]);
+        const assetData = await getAsset(resolvedAssetId);
+        setAsset(assetData);
 
-        const selectedAsset =
-          assetData.find((candidate) => candidate.id === resolvedAssetId) ||
-          null;
+        let eventData: EventRecord | null = null;
+        const finalEventId = resolvedEventId ?? assetData.event_id ?? null;
 
-        setEvent(eventData);
-        setAsset(selectedAsset);
+        if (finalEventId) {
+          try {
+            eventData = await getEvent(finalEventId);
+            setEvent(eventData);
 
-        if (!selectedAsset) {
-          loadState.fail("Asset not found for this event.");
-          return;
+            if (eventData.vendors) {
+              setCreditEntries(parseVendorEntries(eventData.vendors));
+            }
+          } catch {
+            setEvent(null);
+          }
+        } else {
+          setEvent(null);
         }
 
         if (loadedPost) {
@@ -124,6 +142,7 @@ export default function DraftEditorPage() {
               loadedPost.generated_accessibility_options ||
               "",
           );
+          setWorkingTitle(loadedPost.working_title || "");
         }
 
         loadState.succeed("");
@@ -188,6 +207,23 @@ export default function DraftEditorPage() {
       .filter((tag) => !selectedHashtagSet.has(tag));
   }, [generated, selectedHashtagSet]);
 
+  const effectiveCreditTemplate = useMemo(() => {
+    return creditPreset === "custom"
+      ? creditTemplate
+      : presetToTemplate(creditPreset);
+  }, [creditPreset, creditTemplate]);
+
+  const creditsText = useMemo(() => {
+    return buildCreditsText(creditEntries, effectiveCreditTemplate);
+  }, [creditEntries, effectiveCreditTemplate]);
+
+  const previewCaption = useMemo(() => {
+    return [finalCaption, creditsText]
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .join("\n\n");
+  }, [finalCaption, creditsText]);
+
   async function runGenerate(seedCaption?: string) {
     try {
       generateState.start(
@@ -203,13 +239,13 @@ export default function DraftEditorPage() {
       let resolvedPostId = numericPostId;
 
       if (!resolvedPostId) {
-        if (!numericEventId || !numericAssetId) {
-          generateState.fail("Missing event or asset context.");
+        if (!numericAssetId) {
+          generateState.fail("Missing asset context.");
           return;
         }
 
         const created = await createPost({
-          event_id: numericEventId,
+          event_id: numericEventId ?? null,
           asset_id: numericAssetId,
           ...payload,
         });
@@ -280,6 +316,13 @@ export default function DraftEditorPage() {
     try {
       saveState.start("Saving draft...");
 
+      await updatePost(resolvedPostId, {
+        brand_voice: brandVoice,
+        cta_goal: ctaGoal,
+        generation_notes: generationNotes,
+        working_title: workingTitle || null,
+      });
+
       await saveDraftContent(resolvedPostId, {
         draft_caption_current: finalCaption,
         draft_hashtags_current: finalHashtags,
@@ -306,8 +349,13 @@ export default function DraftEditorPage() {
     try {
       approvalState.start("Sending to Approvals...");
 
+      const fullCaption = [finalCaption, creditsText]
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join("\n\n");
+
       const approved = await approvePost(resolvedPostId, {
-        caption_final: finalCaption,
+        caption_final: fullCaption,
         hashtags_final: finalHashtags.split(/\s+/).filter(Boolean),
         accessibility_text: finalAccessibility,
       });
@@ -338,6 +386,21 @@ export default function DraftEditorPage() {
         </div>
       </header>
 
+      <p className="helper-text">* Required</p>
+
+      <div className="form-row">
+        <label htmlFor="working-title">Draft Label</label>
+        <input
+          id="working-title"
+          value={workingTitle}
+          onChange={(e) => setWorkingTitle(e.target.value)}
+          placeholder="e.g. A/B Test – High Energy Version"
+        />
+        <p className="helper-text">
+          Optional. Helps distinguish multiple versions of the same post.
+        </p>
+      </div>
+
       <StatusMessage
         loading={loadState.loading}
         status={loadState.status}
@@ -350,7 +413,7 @@ export default function DraftEditorPage() {
         <div className="draft-preview-sticky">
           <InstagramPreview
             asset={asset}
-            caption={finalCaption}
+            caption={previewCaption}
             hashtags={finalHashtags}
             profileLabel="Draft Preview"
           />
@@ -395,7 +458,10 @@ export default function DraftEditorPage() {
             </div>
           </section>
         ) : (
-          <p>No generated draft yet.</p>
+          <p>
+            Generate a draft to see caption options based on the selected media
+            {event ? " and event context." : "."}
+          </p>
         )}
 
         {(finalCaption || finalHashtags || finalAccessibility) && (
@@ -407,13 +473,26 @@ export default function DraftEditorPage() {
             </p>
 
             <div className="form-row">
-              <label htmlFor="final-caption">Final Caption</label>
+              <label htmlFor="final-caption">Final Caption *</label>
               <textarea
                 id="final-caption"
                 value={finalCaption}
                 onChange={(e) => setFinalCaption(e.target.value)}
               />
+              <p className="helper-text">
+                This is the caption that will be sent forward for approval.
+              </p>
             </div>
+
+            <CreditsEditor
+              entries={creditEntries}
+              onEntriesChange={setCreditEntries}
+              preset={creditPreset}
+              onPresetChange={setCreditPreset}
+              template={creditTemplate}
+              onTemplateChange={setCreditTemplate}
+              showStyleControls
+            />
 
             <div className="form-row">
               <label htmlFor="final-hashtags">Final Hashtags</label>
@@ -422,6 +501,9 @@ export default function DraftEditorPage() {
                 value={finalHashtags}
                 onChange={(e) => setFinalHashtags(e.target.value)}
               />
+              <p className="helper-text">
+                Optional. Space-delimited hashtags are supported here.
+              </p>
             </div>
 
             {parseHashtags(finalHashtags).length > 0 && (
@@ -440,6 +522,10 @@ export default function DraftEditorPage() {
             {suggestedHashtags.length > 0 && (
               <div className="form-row">
                 <label>Other Hashtags?</label>
+                <p className="helper-text">
+                  Suggested from generated SEO keywords. Click to add without
+                  duplicates.
+                </p>
                 <div className="token-row">
                   {suggestedHashtags.map((tag) => (
                     <button
@@ -459,6 +545,10 @@ export default function DraftEditorPage() {
               <label htmlFor="final-accessibility">
                 Final Accessibility Text
               </label>
+              <p className="helper-text">
+                Optional. Generated from media analysis. Edit this if the
+                description needs correction.
+              </p>
               <textarea
                 id="final-accessibility"
                 value={finalAccessibility}
@@ -504,29 +594,81 @@ export default function DraftEditorPage() {
           <section aria-labelledby="context-heading">
             <h3 id="context-heading">Context</h3>
 
-            {event ? (
-              <div className="card">
-                <h4>{event.title}</h4>
+            <div className="card">
+              {event ? (
+                <>
+                  <h4>{event.title}</h4>
 
-                <p>
-                  <strong>Type:</strong> {event.event_type || "None"}
-                </p>
-                <p>
-                  <strong>Location:</strong> {event.location || "None"}
-                </p>
-                <p>
-                  <strong>Recap:</strong> {event.recap || "No recap provided."}
-                </p>
-                <p>
-                  <strong>Guidance:</strong>{" "}
-                  {event.event_guidance || "No guidance provided."}
-                </p>
+                  <p>
+                    <strong>Type:</strong> {event.event_type || "None"}
+                  </p>
+                  <p>
+                    <strong>Location:</strong> {event.location || "None"}
+                  </p>
+                  <p>
+                    <strong>Recap:</strong>{" "}
+                    {event.recap || "No recap provided."}
+                  </p>
+                  <p>
+                    <strong>Guidance:</strong>{" "}
+                    {event.event_guidance || "No guidance provided."}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h4>No Event Context</h4>
+                  <p className="helper-text">
+                    This draft is being generated from the asset alone. Event
+                    context is optional.
+                  </p>
+                </>
+              )}
 
-                {asset && <AssetPreview asset={asset} />}
-              </div>
-            ) : (
-              <p>No context loaded yet.</p>
-            )}
+              {asset?.media_type === "video" && (
+                <>
+                  <p>
+                    <strong>Analysis Mode:</strong> Visual analysis from sampled
+                    frames
+                  </p>
+
+                  {asset.vision_summary_generated && (
+                    <>
+                      <p>
+                        <strong>Video Summary:</strong>{" "}
+                        {asset.vision_summary_generated}
+                      </p>
+                      <p className="helper-text">
+                        Generated from sampled video frames. You can reanalyze
+                        if this misses the subject, setting, or action.
+                      </p>
+                    </>
+                  )}
+                </>
+              )}
+
+              {asset?.media_type === "image" &&
+                asset?.vision_summary_generated && (
+                  <>
+                    <p>
+                      <strong>Analysis Mode:</strong> Image analysis
+                    </p>
+                    <p>
+                      <strong>Image Summary:</strong>{" "}
+                      {asset.vision_summary_generated}
+                    </p>
+                  </>
+                )}
+
+              {event?.id && asset?.id && (
+                <p>
+                  <Link to={`/events/${event.id}`}>
+                    Reanalyze this media from the event page
+                  </Link>
+                </p>
+              )}
+
+              {asset && <AssetPreview asset={asset} />}
+            </div>
           </section>
         </div>
 
@@ -536,23 +678,29 @@ export default function DraftEditorPage() {
 
             <form onSubmit={handleGenerate}>
               <div className="form-row">
-                <label htmlFor="brand-voice">Brand Voice</label>
+                <label htmlFor="brand-voice">Brand Voice *</label>
                 <input
                   id="brand-voice"
                   value={brandVoice}
                   onChange={(e) => setBrandVoice(e.target.value)}
                   required
                 />
+                <p className="helper-text">
+                  Shapes the tone and personality of the caption.
+                </p>
               </div>
 
               <div className="form-row">
-                <label htmlFor="cta-goal">CTA Goal</label>
+                <label htmlFor="cta-goal">CTA Goal *</label>
                 <input
                   id="cta-goal"
                   value={ctaGoal}
                   onChange={(e) => setCtaGoal(e.target.value)}
                   required
                 />
+                <p className="helper-text">
+                  Example: drive follows, inquiries, bookings, or clicks.
+                </p>
               </div>
 
               <div className="form-row">
@@ -562,6 +710,10 @@ export default function DraftEditorPage() {
                   value={generationNotes}
                   onChange={(e) => setGenerationNotes(e.target.value)}
                 />
+                <p className="helper-text">
+                  Optional. Add extra direction, constraints, or ideas for this
+                  specific draft.
+                </p>
               </div>
 
               <div className="approval-action-row">

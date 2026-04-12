@@ -7,6 +7,7 @@ import DraftEditorPage from "./pages/DraftsEditorPage";
 import DraftsPage from "./pages/DraftsPage";
 import ApprovalsPage from "./pages/ApprovalsPage";
 import SchedulesPage from "./pages/SchedulesPage";
+import AssetsPage from "./pages/AssetsPage";
 
 export const router = createBrowserRouter([
   {
@@ -24,6 +25,10 @@ export const router = createBrowserRouter([
       {
         path: "events/:eventId",
         element: <EventDetailPage />,
+      },
+      {
+        path: "assets",
+        element: <AssetsPage />,
       },
       {
         path: "drafts",

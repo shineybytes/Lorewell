@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { listApprovedPosts } from "../api/approvals";
+import { useNavigate } from "react-router-dom";
+import { forkApprovedPostToDraft, listApprovedPosts } from "../api/approvals";
 import type { ApprovedPost } from "../api/approvals";
 import StatusMessage from "../components/StatusMessage";
 import { listTimezones } from "../api/events";
@@ -10,6 +10,7 @@ import { createSchedule, publishNow } from "../api/schedules";
 import { friendlyPublishError } from "../utils/error";
 
 export default function ApprovalsPage() {
+  const navigate = useNavigate();
   const loadState = useAsyncState();
 
   const [posts, setPosts] = useState<ApprovedPost[]>([]);
@@ -134,12 +135,47 @@ export default function ApprovalsPage() {
                     <div className="approval-details-column">
                       <h3>Approved #{post.id}</h3>
                       <div className="approval-action-row">
-                        <Link
-                          className="button-link"
-                          to={`/drafts/editor?post_id=${post.post_id}`}
+                        <button
+                          type="button"
+                          disabled={postAction.loading}
+                          onClick={async () => {
+                            try {
+                              setPostActionState(post.id, {
+                                loading: true,
+                                status: "Creating revision draft...",
+                                error: "",
+                              });
+
+                              const forked = await forkApprovedPostToDraft(
+                                post.id,
+                              );
+
+                              setPostActionState(post.id, {
+                                loading: false,
+                                status: "Revision draft created.",
+                                error: "",
+                              });
+
+                              navigate(
+                                `/drafts/editor?post_id=${forked.post_id}`,
+                              );
+                            } catch (err) {
+                              console.error(err);
+                              setPostActionState(post.id, {
+                                loading: false,
+                                status: "",
+                                error:
+                                  err instanceof Error
+                                    ? err.message
+                                    : "Failed to create revision draft.",
+                              });
+                            }
+                          }}
                         >
-                          Edit Post
-                        </Link>
+                          {postAction.loading
+                            ? "Working..."
+                            : "Create Revision Draft"}
+                        </button>
 
                         <button
                           type="button"
@@ -213,7 +249,7 @@ export default function ApprovalsPage() {
 
                       <div className="form-row">
                         <label htmlFor={`publish-at-${post.id}`}>
-                          Publish At
+                          Publish At (optional until you schedule)
                         </label>
                         <input
                           id={`publish-at-${post.id}`}
@@ -229,11 +265,14 @@ export default function ApprovalsPage() {
                             }))
                           }
                         />
+                        <p className="helper-text">
+                          Optional until you click Schedule.
+                        </p>
                       </div>
 
                       <div className="form-row">
                         <label htmlFor={`publish-tz-${post.id}`}>
-                          Timezone
+                          Timezone (optional until you schedule)
                         </label>
                         <select
                           id={`publish-tz-${post.id}`}
@@ -255,6 +294,10 @@ export default function ApprovalsPage() {
                             </option>
                           ))}
                         </select>
+                        <p className="helper-text">
+                          Optional until you click Schedule. Required together
+                          with Publish At.
+                        </p>
                       </div>
 
                       <button

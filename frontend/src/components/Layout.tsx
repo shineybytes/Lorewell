@@ -19,6 +19,9 @@ export default function Layout() {
                 <NavLink to="/events/new">New Event</NavLink>
               </li>
               <li>
+                <NavLink to="/assets">Assets</NavLink>
+              </li>
+              <li>
                 <NavLink to="/drafts">Drafts</NavLink>
               </li>
               <li>

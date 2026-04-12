@@ -5,6 +5,7 @@ import {
   retrySchedule,
   archiveAllFailed,
   restoreAllFailed,
+  deleteSchedule,
 } from "../api/schedules";
 import type { Schedule } from "../api/schedules";
 import StatusMessage from "../components/StatusMessage";
@@ -279,6 +280,9 @@ export default function SchedulesPage() {
               error: "",
             };
 
+            const canUnschedule =
+              s.status === "scheduled" || s.status === "publishing";
+
             return (
               <li key={s.id}>
                 <article className="card">
@@ -320,6 +324,50 @@ export default function SchedulesPage() {
                           : "None"}
                       </p>
 
+                      {canUnschedule && (
+                        <button
+                          type="button"
+                          className="button-danger"
+                          disabled={scheduleAction.loading}
+                          onClick={async () => {
+                            try {
+                              if (!confirm("Unschedule this post?")) {
+                                return;
+                              }
+
+                              setScheduleActionState(s.id, {
+                                loading: true,
+                                status: "Unscheduling post...",
+                                error: "",
+                              });
+
+                              await deleteSchedule(s.id);
+                              await loadData(false);
+
+                              setScheduleActionState(s.id, {
+                                loading: false,
+                                status: "Post unscheduled.",
+                                error: "",
+                              });
+                            } catch (err) {
+                              console.error(err);
+                              setScheduleActionState(s.id, {
+                                loading: false,
+                                status: "",
+                                error:
+                                  err instanceof Error
+                                    ? err.message
+                                    : "Failed to unschedule post.",
+                              });
+                            }
+                          }}
+                        >
+                          {scheduleAction.loading
+                            ? "Unscheduling..."
+                            : "Unschedule"}
+                        </button>
+                      )}
+
                       {(activeTab === "attention" ||
                         activeTab === "archived") && (
                         <>
@@ -327,6 +375,7 @@ export default function SchedulesPage() {
                             <strong>Archived:</strong>{" "}
                             {s.failure_acknowledged ? "Yes" : "No"}
                           </p>
+
                           {activeTab === "attention" && (
                             <button
                               type="button"
@@ -408,14 +457,14 @@ export default function SchedulesPage() {
                                 ? "Restore to Needs Attention"
                                 : "Archive Failure"}
                           </button>
-
-                          <StatusMessage
-                            loading={scheduleAction.loading}
-                            status={scheduleAction.status}
-                            error={scheduleAction.error}
-                          />
                         </>
                       )}
+
+                      <StatusMessage
+                        loading={scheduleAction.loading}
+                        status={scheduleAction.status}
+                        error={scheduleAction.error}
+                      />
                     </div>
                   </div>
                 </article>

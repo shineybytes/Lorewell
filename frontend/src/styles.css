@@ -122,6 +122,35 @@ legend {
   font-size: 0.95rem;
 }
 
+/* Inline field rows for compact label + control layouts
+   Used on Assets page for:
+   Asset Name: [input]
+   Event: X | Re-assign Event: [select]
+*/
+.inline-form-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.inline-form-row label,
+.inline-form-row span {
+  white-space: nowrap;
+}
+
+.inline-form-row input,
+.inline-form-row select {
+  flex: 1;
+  min-width: 180px;
+  max-width: 100%;
+}
+
+.inline-divider {
+  margin: 0 0.25rem;
+  opacity: 0.6;
+}
+
 /* =========================
    Buttons / Links
    ========================= */
@@ -155,6 +184,15 @@ select:focus,
 a:focus {
   outline: 3px solid #1a73e8;
   outline-offset: 2px;
+}
+
+.button-danger {
+  border-color: #b00020;
+  color: #b00020;
+}
+
+.button-danger:hover {
+  background: #fff5f5;
 }
 
 /* =========================
@@ -205,12 +243,72 @@ a:focus {
 }
 
 /* =========================
-   Asset / Media Preview
+   Media Preview
    ========================= */
 
+/* Clickable preview wrapper */
+.asset-preview-wrapper {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: zoom-in;
+}
+
+/* Default preview sizing */
 .asset-preview {
   width: min(100%, 320px);
+  height: auto;
   margin-bottom: 1rem;
+}
+
+/* Compact Asset Library preview:
+   cover for better scanning in the library
+*/
+.asset-preview-wrapper.compact .asset-preview,
+.asset-library-panel .asset-preview {
+  width: 180px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+/* Expanded preview modal */
+.asset-preview-modal {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.asset-preview-modal-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
+.asset-preview-modal-content img,
+.asset-preview-modal-content video {
+  max-width: 100%;
+  max-height: 90vh;
+  object-fit: contain;
+}
+
+.asset-preview-close {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: #000;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
 }
 
 /* =========================
@@ -336,31 +434,22 @@ a:focus {
 }
 
 /* =========================
-   Responsive
+   Details / Disclosure
    ========================= */
-@media (min-width: 800px) {
-  .generated-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+
+details > summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
 }
-@media (max-width: 800px) {
-  .approval-review-layout {
-    grid-template-columns: 1fr;
-  }
 
-  .approval-preview-column {
-    padding-right: 0;
-    border-right: 0;
-  }
-
-  .instagram-preview {
-    max-width: 100%;
-  }
-
-  .draft-preview-sticky {
-    position: static;
-  }
+details[open] > summary {
+  margin-bottom: 1rem;
 }
+
+/* =========================
+   Draft / Generation Views
+   ========================= */
 
 .draft-preview-hero {
   display: flex;
@@ -395,6 +484,10 @@ a:focus {
   gap: 1rem;
 }
 
+/* =========================
+   Schedule Toolbar
+   ========================= */
+
 .schedule-toolbar {
   display: flex;
   justify-content: space-between;
@@ -418,14 +511,9 @@ a:focus {
   border-color: #b00020;
 }
 
-.button-danger {
-  border-color: #b00020;
-  color: #b00020;
-}
-
-.button-danger:hover {
-  background: #fff5f5;
-}
+/* =========================
+   Token / Chip UI
+   ========================= */
 
 .token-row {
   display: flex;
@@ -449,4 +537,78 @@ a:focus {
 
 .token-chip-button:hover {
   background: #f3f3f3;
+}
+
+/* =========================
+   Native Progress
+   ========================= */
+
+progress {
+  width: 100%;
+  height: 1rem;
+}
+
+/* =========================
+   Responsive
+   ========================= */
+
+@media (min-width: 800px) {
+  .generated-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 800px) {
+  .approval-review-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .approval-preview-column {
+    padding-right: 0;
+    border-right: 0;
+  }
+
+  .instagram-preview {
+    max-width: 100%;
+  }
+
+  .draft-preview-sticky {
+    position: static;
+  }
+
+  .asset-preview-wrapper.compact .asset-preview,
+  .asset-library-panel .asset-preview {
+    width: min(100%, 220px);
+    height: 140px;
+  }
+}
+
+.asset-card-header {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.asset-card-meta {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.asset-card-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.asset-card-meta-row label,
+.asset-card-meta-row span {
+  white-space: nowrap;
+}
+
+.asset-card-meta-row input,
+.asset-card-meta-row select {
+  flex: 1;
+  min-width: 180px;
+  max-width: 100%;
 }

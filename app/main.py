@@ -20,9 +20,13 @@ from app.schemas import (
         ApprovedPostResponse,
         AssetAnalyzeRequest,
         AssetAnalyzeResponse,
+        AssetAnalysisProposalResponse,
+        AssetApplyAnalysisRequest,
         AssetApproveRequest,
         AssetApproveResponse,
+        AssetEventUpdate,
         AssetResponse,
+        AssetRenameRequest,
         EventCreate,
         EventResponse,
         PostDraftCreate,
@@ -62,6 +66,11 @@ def init_app() -> None:
 init_app()
 
 
+def build_default_draft_title(event: Event | None, prefix: str = "Draft") -> str:
+    if event and event.title:
+        return f"{prefix} — {event.title}"
+    return prefix
+
 
 def analyze_asset_record(asset: Asset, db: Session, user_correction: str | None = None) -> Asset:
     try:
@@ -82,6 +91,43 @@ def analyze_asset_record(asset: Asset, db: Session, user_correction: str | None 
     db.refresh(asset)
     return asset
 
+def build_event_context_correction(
+    asset: Asset,
+    db: Session,
+    user_correction: str | None = None,
+) -> str | None:
+    event = None
+    if asset.event_id is not None:
+        event = db.query(Event).filter(Event.id == asset.event_id).first()
+
+    event_bits: list[str] = []
+
+    if event:
+        if event.title:
+            event_bits.append(f"Title: {event.title}")
+        if event.event_type:
+            event_bits.append(f"Type: {event.event_type}")
+        if event.location:
+            event_bits.append(f"Location: {event.location}")
+        if event.recap:
+            event_bits.append(f"Recap: {event.recap}")
+        if event.event_guidance:
+            event_bits.append(f"Guidance: {event.event_guidance}")
+        if event.vendors:
+            event_bits.append(f"Vendors: {event.vendors}")
+
+    context_text = ""
+    if event_bits:
+        context_text = (
+            "Event context may help interpret this asset. "
+            "Use it as secondary context only. "
+            "Do not invent details not supported by what is visible.\n\n"
+            + "\n".join(event_bits)
+        )
+
+    correction_parts = [part for part in [user_correction, context_text] if part]
+    return "\n\n".join(correction_parts) if correction_parts else None
+
 
 def create_post(payload: PostDraftCreate, db: Session) -> PostDraftCreateResponse:
     asset = db.query(Asset).filter(Asset.id == payload.asset_id).first()
@@ -93,14 +139,19 @@ def create_post(payload: PostDraftCreate, db: Session) -> PostDraftCreateRespons
         if not event:
             raise HTTPException(status_code=404, detail="Event not found")
 
+    event = None
+    if payload.event_id:
+        event = db.query(Event).filter(Event.id == payload.event_id).first()
+
     post = Post(
-            event_id=payload.event_id,
-            primary_asset_id=payload.asset_id,
-            brand_voice=payload.brand_voice,
-            cta_goal=payload.cta_goal,
-            generation_notes=payload.generation_notes,
-            status="draft",
-            )
+        event_id=payload.event_id,
+        primary_asset_id=payload.asset_id,
+        brand_voice=payload.brand_voice,
+        cta_goal=payload.cta_goal,
+        generation_notes=payload.generation_notes,
+        working_title=build_default_draft_title(event, "Draft"),
+        status="draft",
+    )
 
     db.add(post)
     db.commit()
@@ -153,6 +204,29 @@ def to_event_response(event: Event) -> EventResponse:
 def create_event(payload: EventCreate, db: Session = Depends(get_db)):
     event = Event(**payload.model_dump())
     validate_event_datetime(event)
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+
+    return to_event_response(event)
+
+@app.patch("/events/{event_id}", response_model=EventResponse)
+def update_event(
+    event_id: int,
+    payload: EventCreate,
+    db: Session = Depends(get_db),
+):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    update_data = payload.model_dump(exclude_unset=True)
+
+    for field, value in update_data.items():
+        setattr(event, field, value)
+
+    validate_event_datetime(event)
+
     db.add(event)
     db.commit()
     db.refresh(event)
@@ -218,11 +292,33 @@ def list_event_assets(event_id: int, db: Session = Depends(get_db)):
                 accessibility_text_generated=a.accessibility_text_generated,
                 accessibility_text_final=a.accessibility_text_final,
                 analysis_error_message=a.analysis_error_message,
-                analysis_user_correction=a.analysis_user_correction
+                analysis_user_correction=a.analysis_user_correction,
+                display_name=a.display_name,
+                created_at=a.created_at,
                 )
             for a in assets
             ]
 
+@app.patch("/assets/{asset_id}")
+def rename_asset(
+    asset_id: int,
+    payload: AssetRenameRequest,
+    db: Session = Depends(get_db),
+):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    asset.display_name = payload.display_name
+
+    db.add(asset)
+    db.commit()
+    db.refresh(asset)
+
+    return {
+        "id": asset.id,
+        "display_name": asset.display_name,
+    }
 
 @app.post("/assets/{asset_id}/analyze", response_model=AssetAnalyzeResponse)
 def analyze_asset(
@@ -243,6 +339,46 @@ def analyze_asset(
             accessibility_text_generated=asset.accessibility_text_generated,
             analysis_error_message=asset.analysis_error_message,
             )
+
+@app.post("/assets/upload")
+def upload_asset_no_event(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    contents = file.file.read()
+    file_size = len(contents)
+
+    media_type, validation_error = validate_media_file(file.filename, file_size)
+    if validation_error:
+        raise HTTPException(status_code=400, detail=validation_error)
+
+    safe_name = Path(file.filename).name
+    save_path = Path(settings.media_dir) / safe_name
+
+    with save_path.open("wb") as buffer:
+        buffer.write(contents)
+
+    asset = Asset(
+        event_id=None,
+        file_path=str(save_path),
+        media_type=media_type,
+        display_name=safe_name,  # 👈 default name
+        analysis_status="pending",
+    )
+
+    db.add(asset)
+    db.commit()
+    db.refresh(asset)
+
+    asset = analyze_asset_record(asset, db)
+
+    return {
+        "asset_id": asset.id,
+        "media_type": asset.media_type,
+        "analysis_status": asset.analysis_status,
+        "vision_summary_generated": asset.vision_summary_generated,
+        "accessibility_text_generated": asset.accessibility_text_generated,
+    }
 
 
 @app.post("/assets/{asset_id}/approve", response_model=AssetApproveResponse)
@@ -268,6 +404,63 @@ def approve_asset(
             analysis_status=asset.analysis_status,
             accessibility_text_final=asset.accessibility_text_final or "",
             )
+
+@app.get("/assets", response_model=list[AssetResponse])
+def list_assets(db: Session = Depends(get_db)):
+    assets = db.query(Asset).order_by(Asset.id.desc()).all()
+    return [
+        AssetResponse(
+            id=a.id,
+            event_id=a.event_id,
+            file_path=a.file_path,
+            media_type=a.media_type,
+            analysis_status=a.analysis_status,
+            vision_summary_generated=a.vision_summary_generated,
+            accessibility_text_generated=a.accessibility_text_generated,
+            accessibility_text_final=a.accessibility_text_final,
+            analysis_error_message=a.analysis_error_message,
+            analysis_user_correction=a.analysis_user_correction,
+            display_name=a.display_name,
+            created_at=a.created_at,
+        )
+        for a in assets
+    ]
+
+@app.patch("/assets/{asset_id}/event", response_model=AssetResponse)
+def update_asset_event(
+    asset_id: int,
+    payload: AssetEventUpdate,
+    db: Session = Depends(get_db),
+):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    if payload.event_id is not None:
+        event = db.query(Event).filter(Event.id == payload.event_id).first()
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+
+    asset.event_id = payload.event_id
+
+    db.add(asset)
+    db.commit()
+    db.refresh(asset)
+
+    return AssetResponse(
+        id=asset.id,
+        event_id=asset.event_id,
+        file_path=asset.file_path,
+        media_type=asset.media_type,
+        analysis_status=asset.analysis_status,
+        vision_summary_generated=asset.vision_summary_generated,
+        accessibility_text_generated=asset.accessibility_text_generated,
+        accessibility_text_final=asset.accessibility_text_final,
+        analysis_error_message=asset.analysis_error_message,
+        analysis_user_correction=asset.analysis_user_correction,
+        display_name=asset.display_name,
+        created_at=asset.created_at,
+    )
 
 
 @app.post("/posts", response_model=PostDraftCreateResponse)
@@ -327,6 +520,7 @@ def generate_post(
         accessibility_text=post.generated_accessibility_options,
         seo_keywords=result.get("seo_keywords", []),
         visual_summary=result.get("visual_summary"),
+        credits=result.get("credits"),
     )
 
 @app.post("/posts/{post_id}/approve", response_model=ApprovedPostResponse)
@@ -368,22 +562,39 @@ def approve_post(
             approved_post_id=approved.id,
             status="approved",
             )
-
-
 @app.get("/posts")
 def list_posts(db: Session = Depends(get_db)):
-    posts = db.query(Post).all()
-    return [
+    posts = db.query(Post).order_by(Post.created_at.desc()).all()
+
+    results = []
+    for p in posts:
+        event = db.query(Event).filter(Event.id == p.event_id).first() if p.event_id else None
+        asset = (
+            db.query(Asset).filter(Asset.id == p.primary_asset_id).first()
+            if p.primary_asset_id
+            else None
+        )
+
+        asset_filename = None
+        if asset and asset.file_path:
+            asset_filename = Path(asset.file_path).name
+
+        results.append(
             {
                 "id": p.id,
                 "event_id": p.event_id,
                 "asset_id": p.primary_asset_id,
                 "status": p.status,
                 "created_at": p.created_at.isoformat(),
-                }
-            for p in posts
-            ]
+                "event_title": event.title if event else None,
+                "event_date": event.event_date.isoformat() if event and event.event_date else None,
+                "asset_filename": asset_filename,
+                "draft_caption_current": p.draft_caption_current,
+                "working_title": p.working_title,
+            }
+        )
 
+    return results
 
 @app.post("/approved-posts/{approved_post_id}/schedule", response_model=ScheduleResponse)
 def schedule_post(
@@ -548,6 +759,7 @@ def get_post(post_id: int, db: Session = Depends(get_db)):
         "brand_voice": post.brand_voice,
         "cta_goal": post.cta_goal,
         "generation_notes": post.generation_notes,
+        "working_title": post.working_title,
         "generated_caption_options": post.generated_caption_options,
         "generated_hashtag_options": post.generated_hashtag_options,
         "generated_accessibility_options": post.generated_accessibility_options,
@@ -575,6 +787,7 @@ def update_post_route(
     post.brand_voice = payload.brand_voice
     post.cta_goal = payload.cta_goal
     post.generation_notes = payload.generation_notes
+    post.working_title = payload.working_title
 
     db.add(post)
     db.commit()
@@ -744,9 +957,17 @@ def delete_event(event_id: int, db: Session = Depends(get_db)):
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
-    asset = db.query(Asset).filter(Asset.event_id == event_id).first()
-    if asset:
-        raise HTTPException(status_code=400, detail="Event has assets")
+    # detach assets first
+    db.query(Asset).filter(Asset.event_id == event_id).update(
+        {"event_id": None},
+        synchronize_session=False,
+    )
+
+    # detach posts/drafts first
+    db.query(Post).filter(Post.event_id == event_id).update(
+        {"event_id": None},
+        synchronize_session=False,
+    )
 
     db.delete(event)
     db.commit()
@@ -777,3 +998,155 @@ def update_post_draft_content(
         "draft_hashtags_current": post.draft_hashtags_current,
         "draft_accessibility_current": post.draft_accessibility_current,
     }
+
+@app.post("/approved-posts/{approved_post_id}/fork-draft", response_model=PostDraftCreateResponse)
+def fork_approved_post_to_draft(
+    approved_post_id: int,
+    db: Session = Depends(get_db),
+):
+    approved = (
+        db.query(ApprovedPost)
+        .filter(ApprovedPost.id == approved_post_id)
+        .first()
+    )
+    if not approved:
+        raise HTTPException(status_code=404, detail="ApprovedPost not found")
+
+    source_post = (
+        db.query(Post)
+        .filter(Post.id == approved.post_id)
+        .first()
+    )
+    if not source_post:
+        raise HTTPException(status_code=404, detail="Source Post not found")
+
+    event = None
+    if source_post.event_id:
+        event = db.query(Event).filter(Event.id == source_post.event_id).first()
+
+    draft = Post(
+        event_id=source_post.event_id,
+        primary_asset_id=approved.selected_asset_id,
+        brand_voice=source_post.brand_voice,
+        cta_goal=source_post.cta_goal,
+        generation_notes=source_post.generation_notes,
+        working_title=build_default_draft_title(event, "Revision Draft"),
+        draft_caption_current=approved.caption_final,
+        draft_hashtags_current=approved.hashtags_final,
+        draft_accessibility_current=approved.accessibility_text,
+        status="draft",
+    )
+
+    db.add(draft)
+    db.commit()
+    db.refresh(draft)
+
+    return PostDraftCreateResponse(
+        post_id=draft.id,
+        status=draft.status,
+    )
+
+@app.get("/assets/{asset_id}", response_model=AssetResponse)
+def get_asset(asset_id: int, db: Session = Depends(get_db)):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    return AssetResponse(
+        id=asset.id,
+        event_id=asset.event_id,
+        file_path=asset.file_path,
+        media_type=asset.media_type,
+        analysis_status=asset.analysis_status,
+        vision_summary_generated=asset.vision_summary_generated,
+        accessibility_text_generated=asset.accessibility_text_generated,
+        accessibility_text_final=asset.accessibility_text_final,
+        analysis_error_message=asset.analysis_error_message,
+        analysis_user_correction=asset.analysis_user_correction,
+        display_name=asset.display_name,
+        created_at=asset.created_at,
+    )
+
+@app.post("/assets/{asset_id}/propose-analysis", response_model=AssetAnalysisProposalResponse)
+def propose_asset_analysis(
+    asset_id: int,
+    payload: AssetAnalyzeRequest,
+    db: Session = Depends(get_db),
+):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    try:
+        contextual_correction = build_event_context_correction(
+            asset,
+            db,
+            user_correction=payload.user_correction,
+        )
+
+        proposed = analyze_media(
+            asset.file_path,
+            asset.media_type,
+            user_correction=contextual_correction,
+        )
+
+        return AssetAnalysisProposalResponse(
+            asset_id=asset.id,
+            current_visual_summary=asset.vision_summary_generated,
+            current_accessibility_text=asset.accessibility_text_generated,
+            proposed_visual_summary=proposed.get("visual_summary"),
+            proposed_accessibility_text=proposed.get("accessibility_text"),
+            analysis_status=asset.analysis_status,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.patch("/assets/{asset_id}/apply-analysis", response_model=AssetResponse)
+def apply_asset_analysis(
+    asset_id: int,
+    payload: AssetApplyAnalysisRequest,
+    db: Session = Depends(get_db),
+):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    asset.vision_summary_generated = payload.vision_summary_generated
+    asset.accessibility_text_generated = payload.accessibility_text_generated
+    asset.analysis_status = "analyzed"
+    asset.analysis_error_message = None
+
+    db.add(asset)
+    db.commit()
+    db.refresh(asset)
+
+    return AssetResponse(
+        id=asset.id,
+        event_id=asset.event_id,
+        file_path=asset.file_path,
+        media_type=asset.media_type,
+        analysis_status=asset.analysis_status,
+        vision_summary_generated=asset.vision_summary_generated,
+        accessibility_text_generated=asset.accessibility_text_generated,
+        accessibility_text_final=asset.accessibility_text_final,
+        analysis_error_message=asset.analysis_error_message,
+        analysis_user_correction=asset.analysis_user_correction,
+        display_name=asset.display_name,
+        created_at=asset.created_at,
+    )
+
+@app.delete("/schedules/{schedule_id}")
+def delete_schedule(schedule_id: int, db: Session = Depends(get_db)):
+    schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+
+    if schedule.status == "published":
+        raise HTTPException(
+            status_code=400,
+            detail="Published schedules cannot be unscheduled",
+        )
+
+    db.delete(schedule)
+    db.commit()
+    return {"status": "deleted"}

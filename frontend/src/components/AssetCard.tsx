@@ -1,22 +1,42 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { AssetRecord } from "../types/api";
 import AssetPreview from "./AssetPreview";
 import StatusMessage from "./StatusMessage";
-import { approveAssetAccessibility, reanalyzeAsset } from "../api/assets";
+import {
+  approveAssetAccessibility,
+  deleteAsset,
+  reanalyzeAsset,
+} from "../api/assets";
 import { useAsyncState } from "../hooks/useAsyncState";
-import { deleteAsset } from "../api/assets";
 
 type AssetCardProps = {
   asset: AssetRecord;
-  eventId: number;
+  eventId?: number | null;
   onRefresh: () => Promise<void>;
+  compactPreview?: boolean;
 };
+
+function filenameFromPath(filePath: string) {
+  return filePath.split("/").pop() || filePath;
+}
+
+function displayAssetName(asset: AssetRecord) {
+  return asset.display_name || filenameFromPath(asset.file_path);
+}
+
+function formatTimestamp(value: string | null | undefined) {
+  if (!value) return "Unknown";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString();
+}
 
 export default function AssetCard({
   asset,
   eventId,
   onRefresh,
+  compactPreview = false,
 }: AssetCardProps) {
   const [correction, setCorrection] = useState(
     asset.analysis_user_correction || "",
@@ -25,12 +45,36 @@ export default function AssetCard({
     asset.accessibility_text_final || asset.accessibility_text_generated || "",
   );
 
+  useEffect(() => {
+    setCorrection(asset.analysis_user_correction || "");
+  }, [asset.analysis_user_correction]);
+
+  useEffect(() => {
+    setFinalAccessibility(
+      asset.accessibility_text_final ||
+        asset.accessibility_text_generated ||
+        "",
+    );
+  }, [asset.accessibility_text_final, asset.accessibility_text_generated]);
+
   const reanalyzeState = useAsyncState();
   const approveState = useAsyncState();
 
+  const resolvedEventId = useMemo(() => {
+    return eventId ?? asset.event_id ?? null;
+  }, [eventId, asset.event_id]);
+
+  const draftHref = resolvedEventId
+    ? `/drafts/editor?asset_id=${asset.id}&event_id=${resolvedEventId}`
+    : `/drafts/editor?asset_id=${asset.id}`;
+
   async function handleReanalyze() {
     try {
-      reanalyzeState.start("Reanalyzing asset...");
+      reanalyzeState.start(
+        asset.media_type === "video"
+          ? "Analyzing sampled video frames..."
+          : "Reanalyzing image...",
+      );
       await reanalyzeAsset(asset.id, correction);
       await onRefresh();
       reanalyzeState.succeed("Asset reanalyzed.");
@@ -44,7 +88,7 @@ export default function AssetCard({
 
   async function handleApproveAccessibility() {
     try {
-      approveState.start("Approving accessibility text...");
+      approveState.start("Saving accessibility text...");
       await approveAssetAccessibility(asset.id, finalAccessibility);
       await onRefresh();
       approveState.succeed("Accessibility approved.");
@@ -58,23 +102,65 @@ export default function AssetCard({
     }
   }
 
+  async function handleDeleteAsset() {
+    if (
+      !confirm(
+        "Delete this asset? This may affect drafts or approved posts that depend on it.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await deleteAsset(asset.id);
+      await onRefresh();
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "Failed to delete asset.");
+    }
+  }
+
   return (
-    <article className="card">
-      <div className="approval-review-layout">
-        <div className="approval-preview-column">
-          <h4>Asset #{asset.id}</h4>
-          <AssetPreview asset={asset} />
+    <div className="approval-review-layout">
+      <div className="approval-preview-column">
+        <h4>{displayAssetName(asset)}</h4>
+        <AssetPreview asset={asset} compact={compactPreview} />
 
-          <p>
-            <strong>Type:</strong> {asset.media_type}
-          </p>
-          <p>
-            <strong>Status:</strong> {asset.analysis_status}
-          </p>
+        <p>
+          <strong>Type:</strong> {asset.media_type}
+        </p>
+        <p>
+          <strong>Status:</strong> {asset.analysis_status}
+        </p>
+        <p>
+          <strong>Uploaded:</strong> {formatTimestamp(asset.created_at)}
+        </p>
+        <p className="helper-text">
+          {asset.media_type === "video"
+            ? "Video analysis uses sampled frames from the clip."
+            : "Image analysis is based on the uploaded media."}
+        </p>
+
+        <div className="approval-action-row">
+          <Link className="button-link" to={draftHref}>
+            Create Draft
+          </Link>
+
+          <button
+            type="button"
+            className="button-danger"
+            onClick={handleDeleteAsset}
+          >
+            Delete Asset
+          </button>
         </div>
+      </div>
 
-        <div className="approval-details-column">
-          <div>
+      <div className="approval-details-column">
+        <details>
+          <summary>Show Details</summary>
+
+          <div className="form-row" style={{ marginTop: "1rem" }}>
             <p>
               <strong>Visual summary:</strong>
             </p>
@@ -102,6 +188,10 @@ export default function AssetCard({
               value={correction}
               onChange={(e) => setCorrection(e.target.value)}
             />
+            <p className="helper-text">
+              Optional. Add clarification if the current analysis missed the
+              subject, setting, or action.
+            </p>
           </div>
 
           <button
@@ -109,7 +199,11 @@ export default function AssetCard({
             disabled={reanalyzeState.loading}
             onClick={handleReanalyze}
           >
-            {reanalyzeState.loading ? "Reanalyzing..." : "Reanalyze"}
+            {reanalyzeState.loading
+              ? asset.media_type === "video"
+                ? "Analyzing video..."
+                : "Reanalyzing..."
+              : "Reanalyze"}
           </button>
 
           <StatusMessage
@@ -134,7 +228,7 @@ export default function AssetCard({
             disabled={approveState.loading}
             onClick={handleApproveAccessibility}
           >
-            {approveState.loading ? "Approving..." : "Approve Accessibility"}
+            {approveState.loading ? "Saving..." : "Approve Accessibility"}
           </button>
 
           <StatusMessage
@@ -142,45 +236,8 @@ export default function AssetCard({
             status={approveState.status}
             error={approveState.error}
           />
-
-          <div className="approval-action-row">
-            <Link
-              className="button-link"
-              to={`/drafts/editor?event_id=${eventId}&asset_id=${asset.id}`}
-            >
-              Create Post from Asset
-            </Link>
-
-            <button
-              type="button"
-              className="button-danger"
-              onClick={async () => {
-                if (
-                  !confirm(
-                    "Delete this asset? This may affect drafts or approved posts that depend on it.",
-                  )
-                ) {
-                  return;
-                }
-
-                try {
-                  await deleteAsset(asset.id);
-                  await onRefresh();
-                } catch (err) {
-                  console.error(err);
-                  alert(
-                    err instanceof Error
-                      ? err.message
-                      : "Failed to delete asset.",
-                  );
-                }
-              }}
-            >
-              Delete Asset
-            </button>
-          </div>
-        </div>
+        </details>
       </div>
-    </article>
+    </div>
   );
 }

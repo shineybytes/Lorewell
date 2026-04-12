@@ -42,6 +42,8 @@ class AssetResponse(BaseModel):
     file_path: str
     media_type: str
     analysis_status: str
+    display_name: str | None
+    created_at: datetime
     vision_summary_generated: str | None = None
     accessibility_text_generated: str | None = None
     accessibility_text_final: str | None = None
@@ -106,11 +108,13 @@ class PostGenerationResponse(BaseModel):
     accessibility_text: str | None = None
     seo_keywords: list[str] = Field(default_factory=list)
     visual_summary: str | None = None
+    credits: str | None = None
 
 class PostDraftUpdate(BaseModel):
     brand_voice: str | None = None
     cta_goal: str | None = None
     generation_notes: str | None = None
+    working_title: str | None = None
 
 
 # =========================
@@ -164,3 +168,21 @@ class TimeConvertResponse(BaseModel):
     local_datetime: str
     timezone: str
     utc_datetime: str
+
+class AssetEventUpdate(BaseModel):
+    event_id: int | None = None
+
+class AssetAnalysisProposalResponse(BaseModel):
+    asset_id: int
+    current_visual_summary: str | None = None
+    current_accessibility_text: str | None = None
+    proposed_visual_summary: str | None = None
+    proposed_accessibility_text: str | None = None
+    analysis_status: str
+
+class AssetApplyAnalysisRequest(BaseModel):
+    vision_summary_generated: str | None = None
+    accessibility_text_generated: str | None = None
+
+class AssetRenameRequest(BaseModel):
+    display_name: str | None

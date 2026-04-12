@@ -13,6 +13,72 @@ from app.video_analysis import extract_keyframes
 
 client = OpenAI(api_key=settings.openai_api_key)
 
+def _vendors_for_prompt(event: Event | None) -> str:
+    if not event or not event.vendors:
+        return "None"
+
+    try:
+        vendors = json.loads(event.vendors)
+    except Exception:
+        return event.vendors
+
+    if not isinstance(vendors, list):
+        return str(event.vendors)
+
+    lines = []
+    for vendor in vendors:
+        role = (vendor.get("role") or "").strip()
+        handle = (vendor.get("instagram") or "").strip()
+
+        if role and handle:
+            lines.append(f"{role}: {handle}")
+        elif role:
+            lines.append(role)
+        elif handle:
+            lines.append(handle)
+
+    return "; ".join(lines) if lines else "None"
+
+def _build_credits_block(event) -> str:
+    if not event or not event.vendors:
+        return ""
+
+    try:
+        vendors = json.loads(event.vendors)
+    except Exception:
+        return ""
+
+    if not isinstance(vendors, list):
+        return ""
+
+    lines = []
+
+    for v in vendors:
+        role = (v.get("role") or "").strip()
+        insta = (v.get("instagram") or "").strip()
+
+        if not role and not insta:
+            continue
+
+        role_lower = role.lower()
+
+        if role_lower in ["photography", "photo", "photos"]:
+            prefix = "Photos by"
+        elif role_lower == "venue":
+            prefix = "Venue"
+        elif role_lower == "dj":
+            prefix = "DJ"
+        elif role_lower == "florals":
+            prefix = "Florals"
+        else:
+            prefix = role or "Contributor"
+
+        if insta:
+            lines.append(f"{prefix} {insta}")
+        else:
+            lines.append(prefix)
+
+    return "\n".join(lines)
 
 def _to_data_url(path: str) -> str:
     file_path = Path(path)
@@ -56,6 +122,8 @@ def _build_generation_prompt(
             event_bits.append(f"Recap: {event.recap}")
         if event.event_guidance:
             event_bits.append(f"Guidance: {event.event_guidance}")
+        if event.vendors:
+            event_bits.append(f"Vendors: {_vendors_for_prompt(event)}")
 
     asset_bits = [
         f"Media Type: {asset.media_type}",
@@ -107,6 +175,14 @@ Rules:
 - accessibility_text should clearly describe what is visible
 - seo_keywords must be an array of short keyword phrases
 - visual_summary should be concise and useful for internal reference
+
+Priority:
+- The main drivers of the caption should be, in order: recap, media analysis, brand voice, CTA goal, and generation notes
+- Event type, location, and vendors are secondary context
+- Vendors may help you understand the setting and avoid incorrect assumptions, but should not dominate the caption unless clearly relevant to the recap or visible media
+- Do not invent collaborators, services, or event features that are not supported by the recap or media
+- Do not generate a credits block or attribution lines
+- Caption generation and hashtag generation are your focus
 """.strip()
 
 
@@ -135,9 +211,10 @@ def generate_caption_package(
                 "image_url": _to_data_url(asset.file_path),
             }
         )
-
-    return _json_response_from_content(content)
-
+    result = _json_response_from_content(content)
+    credits_block = _build_credits_block(event)
+    result["credits"] = credits_block
+    return result
 
 def _analyze_single_image(
     file_path: str,
