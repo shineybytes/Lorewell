@@ -66,15 +66,51 @@ This ensures:
 - no incomplete drafts are published
 - schedules always reference a stable snapshot
 
+### Unscheduling
+
+Schedules can be deleted (unscheduled) if they have not been published.
+
+- `DELETE /schedules/{id}` removes the schedule
+- Published schedules cannot be unscheduled
+
+This allows safe correction of scheduling mistakes before publish time.
+
 ## Deletion Rules
 
 | Object | Behavior |
 |--------|--------|
 | Draft  | Can always be deleted |
 | Asset  | Cannot be deleted if used by a post |
-| Event  | Cannot be deleted if it contains assets |
+| Event  | Deleting an event detaches linked asset and posts (event_id → null) |
 
 Deletion is intentionally constrained to prevent data inconsistency.
+
+### Detachment Behavior
+
+Lorewell prefers **non-destructive deletion** where possible.
+
+- Deleting an Event:
+  - does NOT delete assets or posts
+  - sets `event_id = null` on related records
+
+This allows:
+- reuse of assets across events
+- preservation of drafts and approvals
+- flexible workflows where assets are uploaded before events exist
+
+## Asset Library
+
+Assets are no longer required to belong to an Event.
+
+Assets can:
+- exist without an event
+- be reassigned between events
+- be used to create drafts independently
+
+This enables workflows like:
+1. Upload assets first
+2. Create event later
+3. Associate assets as needed
 
 ## Caption Generation
 

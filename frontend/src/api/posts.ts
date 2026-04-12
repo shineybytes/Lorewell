@@ -15,7 +15,7 @@ export function getPost(postId: number) {
 }
 
 export function createPost(payload: {
-  event_id: number;
+  event_id?: number | null;
   asset_id: number;
   brand_voice: string;
   cta_goal: string;
@@ -36,6 +36,7 @@ export function updatePost(
     brand_voice: string;
     cta_goal: string;
     generation_notes?: string;
+    working_title?: string | null;
   },
 ) {
   return fetchJson<PostCreateResponse>(`/posts/${postId}`, {
@@ -75,8 +76,26 @@ export function approvePost(
     body: JSON.stringify(payload),
   });
 }
+
 export function deletePost(postId: number) {
   return fetchJson(`/posts/${postId}`, {
     method: "DELETE",
+  });
+}
+
+export function saveDraftContent(
+  postId: number,
+  payload: {
+    draft_caption_current: string;
+    draft_hashtags_current: string;
+    draft_accessibility_current: string;
+  },
+) {
+  return fetchJson(`/posts/${postId}/draft-content`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
   });
 }

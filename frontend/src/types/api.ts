@@ -11,9 +11,14 @@ export type EventRecord = {
   event_guidance?: string | null;
 };
 
+export type VendorEntry = {
+  role: string;
+  instagram: string;
+};
+
 export type AssetRecord = {
   id: number;
-  event_id: number;
+  event_id?: number | null;
   file_path: string;
   media_type: string;
   analysis_status: string;
@@ -22,6 +27,8 @@ export type AssetRecord = {
   accessibility_text_final: string | null;
   analysis_error_message: string | null;
   analysis_user_correction: string | null;
+  display_name?: string | null;
+  created_at?: string;
 };
 
 export type EventCreatePayload = {
@@ -51,15 +58,23 @@ export type PostRecord = {
   brand_voice: string | null;
   cta_goal: string | null;
   generation_notes: string | null;
+  working_title?: string | null;
   generated_caption_options?: string | null;
   generated_hashtag_options?: string | null;
   generated_accessibility_options?: string | null;
+  draft_caption_current?: string | null;
+  draft_hashtags_current?: string | null;
+  draft_accessibility_current?: string | null;
   approved_caption_final?: string | null;
   approved_hashtags_final?: string | null;
   approved_accessibility_text?: string | null;
   status: string;
   error_message?: string | null;
   created_at: string;
+
+  event_title?: string | null;
+  event_date?: string | null;
+  asset_filename?: string | null;
 };
 
 export type PostCreateResponse = {
@@ -77,9 +92,24 @@ export type PostGenerationResponse = {
   accessibility_text?: string | null;
   seo_keywords: string[];
   visual_summary?: string | null;
+  credits?: string | null;
 };
 
 export type ApprovedPostResponse = {
   approved_post_id: number;
   status: string;
+};
+
+export type AssetAnalysisProposalResponse = {
+  asset_id: number;
+  current_visual_summary: string | null;
+  current_accessibility_text: string | null;
+  proposed_visual_summary: string | null;
+  proposed_accessibility_text: string | null;
+  analysis_status: string;
+};
+
+export type AssetApplyAnalysisPayload = {
+  vision_summary_generated: string | null;
+  accessibility_text_generated: string | null;
 };

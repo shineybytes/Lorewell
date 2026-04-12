@@ -81,3 +81,8 @@ export function toggleScheduleAcknowledged(scheduleId: number) {
     },
   );
 }
+export function deleteSchedule(scheduleId: number) {
+  return fetchJson(`/schedules/${scheduleId}`, {
+    method: "DELETE",
+  });
+}

@@ -52,6 +52,7 @@ def test_generate_post_stores_caption(client, mocker):
             "accessibility_text": "alt text",
             "seo_keywords": ["dj"],
             "visual_summary": "summary",
+            "credits": "Photos by @vendor",
         },
     )
 
@@ -69,6 +70,7 @@ def test_generate_post_stores_caption(client, mocker):
         assert body["caption_option_2"] == "caption two"
         assert body["hashtags"] == ["one", "two"]
         assert body["accessibility_text"] == "alt text"
+        assert body["credits"] == "Photos by @vendor"
 
         posts_resp = client.get("/posts")
         posts = posts_resp.json()

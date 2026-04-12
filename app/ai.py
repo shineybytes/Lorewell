@@ -8,10 +8,77 @@ from openai import OpenAI
 
 from app.config import settings
 from app.models import Asset, Event, Post
+from app.video_analysis import extract_keyframes
 
 
 client = OpenAI(api_key=settings.openai_api_key)
 
+def _vendors_for_prompt(event: Event | None) -> str:
+    if not event or not event.vendors:
+        return "None"
+
+    try:
+        vendors = json.loads(event.vendors)
+    except Exception:
+        return event.vendors
+
+    if not isinstance(vendors, list):
+        return str(event.vendors)
+
+    lines = []
+    for vendor in vendors:
+        role = (vendor.get("role") or "").strip()
+        handle = (vendor.get("instagram") or "").strip()
+
+        if role and handle:
+            lines.append(f"{role}: {handle}")
+        elif role:
+            lines.append(role)
+        elif handle:
+            lines.append(handle)
+
+    return "; ".join(lines) if lines else "None"
+
+def _build_credits_block(event) -> str:
+    if not event or not event.vendors:
+        return ""
+
+    try:
+        vendors = json.loads(event.vendors)
+    except Exception:
+        return ""
+
+    if not isinstance(vendors, list):
+        return ""
+
+    lines = []
+
+    for v in vendors:
+        role = (v.get("role") or "").strip()
+        insta = (v.get("instagram") or "").strip()
+
+        if not role and not insta:
+            continue
+
+        role_lower = role.lower()
+
+        if role_lower in ["photography", "photo", "photos"]:
+            prefix = "Photos by"
+        elif role_lower == "venue":
+            prefix = "Venue"
+        elif role_lower == "dj":
+            prefix = "DJ"
+        elif role_lower == "florals":
+            prefix = "Florals"
+        else:
+            prefix = role or "Contributor"
+
+        if insta:
+            lines.append(f"{prefix} {insta}")
+        else:
+            lines.append(prefix)
+
+    return "\n".join(lines)
 
 def _to_data_url(path: str) -> str:
     file_path = Path(path)
@@ -28,7 +95,22 @@ def _to_data_url(path: str) -> str:
     b64 = base64.b64encode(file_path.read_bytes()).decode("utf-8")
     return f"data:{mime};base64,{b64}"
 
-def _build_generation_prompt(event, asset, post, seed_caption: str | None = None) -> str:
+
+def _json_response_from_content(content: list[dict]) -> dict:
+    response = client.responses.create(
+        model=settings.openai_model,
+        input=[{"role": "user", "content": content}],
+        text={"format": {"type": "json_object"}},
+    )
+    return json.loads(response.output_text)
+
+
+def _build_generation_prompt(
+    event,
+    asset,
+    post,
+    seed_caption: str | None = None,
+) -> str:
     event_bits = []
     if event:
         event_bits.append(f"Event Title: {event.title}")
@@ -40,6 +122,8 @@ def _build_generation_prompt(event, asset, post, seed_caption: str | None = None
             event_bits.append(f"Recap: {event.recap}")
         if event.event_guidance:
             event_bits.append(f"Guidance: {event.event_guidance}")
+        if event.vendors:
+            event_bits.append(f"Vendors: {_vendors_for_prompt(event)}")
 
     asset_bits = [
         f"Media Type: {asset.media_type}",
@@ -91,18 +175,32 @@ Rules:
 - accessibility_text should clearly describe what is visible
 - seo_keywords must be an array of short keyword phrases
 - visual_summary should be concise and useful for internal reference
+
+Priority:
+- The main drivers of the caption should be, in order: recap, media analysis, brand voice, CTA goal, and generation notes
+- Event type, location, and vendors are secondary context
+- Vendors may help you understand the setting and avoid incorrect assumptions, but should not dominate the caption unless clearly relevant to the recap or visible media
+- Do not invent collaborators, services, or event features that are not supported by the recap or media
+- Do not generate a credits block or attribution lines
+- Caption generation and hashtag generation are your focus
 """.strip()
+
 
 def generate_caption_package(
     event: Event | None,
     asset: Asset,
     post: Post,
-    seed_caption: str | None = None
+    seed_caption: str | None = None,
 ) -> dict:
     content = [
         {
             "type": "input_text",
-            "text": _build_generation_prompt(event=event, asset=asset, post=post, seed_caption=seed_caption),
+            "text": _build_generation_prompt(
+                event=event,
+                asset=asset,
+                post=post,
+                seed_caption=seed_caption,
+            ),
         }
     ]
 
@@ -113,17 +211,15 @@ def generate_caption_package(
                 "image_url": _to_data_url(asset.file_path),
             }
         )
+    result = _json_response_from_content(content)
+    credits_block = _build_credits_block(event)
+    result["credits"] = credits_block
+    return result
 
-    response = client.responses.create(
-        model=settings.openai_model,
-        input=[{"role": "user", "content": content}],
-        text={"format": {"type": "json_object"}},
-    )
-
-    return json.loads(response.output_text)
-
-
-def analyze_media(file_path: str, media_type: str, user_correction: str | None = None) -> dict:
+def _analyze_single_image(
+    file_path: str,
+    user_correction: str | None = None,
+) -> dict:
     correction_text = user_correction or ""
     content = [
         {
@@ -141,34 +237,84 @@ Rules:
 - accessibility_text should clearly describe what is visible
 - keep both outputs specific and grounded in the media
 """.strip(),
+        },
+        {
+            "type": "input_image",
+            "image_url": _to_data_url(file_path),
+        },
+    ]
+
+    return _json_response_from_content(content)
+
+
+def _analyze_video(
+    file_path: str,
+    user_correction: str | None = None,
+) -> dict:
+    frame_paths = extract_keyframes(file_path, frame_count=3)
+
+    content: list[dict] = [
+        {
+            "type": "input_text",
+            "text": f"""
+Analyze these sampled frames from a short video and return JSON only with these keys:
+visual_summary, accessibility_text
+
+User correction or clarification:
+{user_correction or ""}
+
+Rules:
+- Treat these images as representative frames from one continuous clip
+- Infer the likely overall action, subject, setting, and vibe of the video
+- Do not describe each frame separately unless necessary
+- Treat the user correction as important context if provided
+- visual_summary should be short and useful for internal reference
+- accessibility_text should clearly describe what is visible in the overall clip
+- keep both outputs specific and grounded in the sampled frames
+""".strip(),
         }
     ]
 
-    if media_type == "image":
+    for frame_path in frame_paths:
         content.append(
             {
                 "type": "input_image",
-                "image_url": _to_data_url(file_path),
+                "image_url": _to_data_url(frame_path),
             }
         )
-    else:
-        cleaned_correction = (user_correction or "").strip()
 
-        if cleaned_correction:
+    return _json_response_from_content(content)
+
+
+def analyze_media(
+    file_path: str,
+    media_type: str,
+    user_correction: str | None = None,
+) -> dict:
+    if media_type == "image":
+        return _analyze_single_image(
+            file_path,
+            user_correction=user_correction,
+        )
+
+    if media_type == "video":
+        try:
+            return _analyze_video(
+                file_path,
+                user_correction=user_correction,
+            )
+        except Exception:
+            cleaned_correction = (user_correction or "").strip()
+
+            if cleaned_correction:
+                return {
+                    "visual_summary": cleaned_correction,
+                    "accessibility_text": cleaned_correction,
+                }
+
             return {
-                "visual_summary": cleaned_correction,
-                "accessibility_text": cleaned_correction,
+                "visual_summary": "Video uploaded. Automatic video analysis failed.",
+                "accessibility_text": "Video uploaded. Add a manual description in Corrections to generate accessibility text.",
             }
 
-        return {
-            "visual_summary": f"Video uploaded. Manual description needed.",
-            "accessibility_text": f"Video uploaded. Add a manual description in Corrections to generate accessibility text.",
-        }
-
-    response = client.responses.create(
-        model=settings.openai_model,
-        input=[{"role": "user", "content": content}],
-        text={"format": {"type": "json_object"}},
-    )
-
-    return json.loads(response.output_text)
+    raise ValueError(f"Unsupported media_type: {media_type}")

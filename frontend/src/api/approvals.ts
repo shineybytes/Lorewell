@@ -15,3 +15,12 @@ export type ApprovedPost = {
 export function listApprovedPosts() {
   return fetchJson<ApprovedPost[]>("/approved-posts");
 }
+
+export function forkApprovedPostToDraft(approvedPostId: number) {
+  return fetchJson<{ post_id: number; status: string }>(
+    `/approved-posts/${approvedPostId}/fork-draft`,
+    {
+      method: "POST",
+    },
+  );
+}

@@ -82,47 +82,13 @@ class Event(Base):
 
 
 class Asset(Base):
-    """
-    Represents a single media file (image or video) captured from an Event.
-
-    Assets are visual slices of an Event and are used as the primary inputs
-    for analysis and post generation.
-
-    Each Asset can be analyzed independently, but may inherit contextual
-    meaning from its parent Event.
-
-    Assets are reusable and can be used in multiple Posts.
-
-    file_path: str
-    # Local or accessible path to the stored media file
-
-    media_type: str
-    # Type of media (e.g., "image", "video")
-
-    analysis_status: str
-    # Current state of analysis (pending, analyzed, approved, failed)
-
-    vision_summary_generated: str | None
-    # AI-generated short description of what the asset visually contains
-
-    accessibility_text_generated: str | None
-    # AI-generated accessibility description (alt text)
-
-    accessibility_text_final: str | None
-    # User-approved or overridden accessibility text
-
-    analysis_user_correction: str | None
-    # User-provided correction to improve analysis accuracy
-
-    analysis_error_message: str | None
-    # Error message if analysis fails
-    """
     __tablename__ = "assets"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     event_id: Mapped[int | None] = mapped_column(ForeignKey("events.id"), nullable=True)
 
     file_path: Mapped[str] = mapped_column(Text)
+    display_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     media_type: Mapped[str] = mapped_column(String(20))
 
     vision_summary_generated: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -136,7 +102,6 @@ class Asset(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
     event = relationship("Event", back_populates="assets")
-
 
 class Post(Base):
     """
@@ -187,10 +152,15 @@ class Post(Base):
     brand_voice: Mapped[str | None] = mapped_column(Text, nullable=True)
     cta_goal: Mapped[str | None] = mapped_column(Text, nullable=True)
     generation_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    working_title: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     generated_caption_options: Mapped[str | None] = mapped_column(Text, nullable=True)
     generated_hashtag_options: Mapped[str | None] = mapped_column(Text, nullable=True)
     generated_accessibility_options: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    draft_caption_current: Mapped[str | None] = mapped_column(Text, nullable=True)
+    draft_hashtags_current: Mapped[str | None] = mapped_column(Text, nullable=True)
+    draft_accessibility_current: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     status: Mapped[str] = mapped_column(String(30), default="draft")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -300,3 +270,4 @@ class Schedule(Base):
     last_attempt_error: Mapped[str| None] = mapped_column(Text, nullable=True)
 
     approved_post = relationship("ApprovedPost", back_populates="schedules")
+

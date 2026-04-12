@@ -1,4 +1,4 @@
-from pathlib import Path
+from tests.helpers import create_event, create_post, upload_asset, write_temp_file
 
 
 def test_delete_post_removes_draft(client, create_event, create_asset, create_post):
@@ -24,13 +24,63 @@ def test_delete_asset_blocks_when_in_use(client, create_event, create_asset, cre
     assert response.json()["detail"] == "Asset is in use"
 
 
-def test_delete_event_blocks_when_assets_exist(client, create_event, create_asset):
-    event_id = create_event()
-    create_asset(event_id)
+def test_delete_asset_succeeds_when_unused(client):
+    event_id = create_event(client)
+    media_path = write_temp_file("tests_temp_delete_unused.jpg", b"fake jpeg bytes")
 
-    response = client.delete(f"/events/{event_id}")
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Event has assets"
+    try:
+        asset = upload_asset(client, event_id, media_path, "image/jpeg")
+        asset_id = asset["asset_id"]
+
+        response = client.delete(f"/assets/{asset_id}")
+        assert response.status_code == 200
+        assert response.json()["status"] == "deleted"
+
+        get_response = client.get(f"/assets/{asset_id}")
+        assert get_response.status_code == 404
+    finally:
+        if media_path.exists():
+            media_path.unlink()
+
+
+def test_delete_event_detaches_assets_and_posts(client):
+    event_id = create_event(client)
+    media_path = write_temp_file("tests_temp_detach_event.jpg", b"fake jpeg bytes")
+
+    try:
+        asset = upload_asset(client, event_id, media_path, "image/jpeg")
+        asset_id = asset["asset_id"]
+
+        post_resp = client.post(
+            "/posts",
+            json={
+                "event_id": event_id,
+                "asset_id": asset_id,
+                "brand_voice": "warm",
+                "cta_goal": "book now",
+                "generation_notes": "detach regression",
+            },
+        )
+        assert post_resp.status_code == 200
+        post_id = post_resp.json()["post_id"]
+
+        delete_resp = client.delete(f"/events/{event_id}")
+        assert delete_resp.status_code == 200
+        assert delete_resp.json()["status"] == "deleted"
+
+        get_event = client.get(f"/events/{event_id}")
+        assert get_event.status_code == 404
+
+        get_asset = client.get(f"/assets/{asset_id}")
+        assert get_asset.status_code == 200
+        assert get_asset.json()["event_id"] is None
+
+        get_post = client.get(f"/posts/{post_id}")
+        assert get_post.status_code == 200
+        assert get_post.json()["event_id"] is None
+    finally:
+        if media_path.exists():
+            media_path.unlink()
 
 
 def test_retry_failed_schedule_creates_new_schedule(client, approved_post_factory, failed_schedule_factory):
