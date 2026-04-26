@@ -43,7 +43,7 @@ def test_create_post(client):
 
 def test_generate_post_stores_caption(client, mocker):
     mocker.patch(
-        "app.main.generate_caption_package",
+        "app.services.posts.generate_caption_package",
         return_value={
             "caption_option_1": "caption one",
             "caption_option_2": "caption two",

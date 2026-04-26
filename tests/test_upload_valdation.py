@@ -50,7 +50,7 @@ def test_upload_rejects_oversized_video(client, mocker):
     event_id = create_event(client)
 
     mocker.patch(
-        "app.main.validate_media_file",
+        "app.services.assets.validate_media_file",
         return_value=("video", "Video exceeds 300 MB maximum size."),
     )
 

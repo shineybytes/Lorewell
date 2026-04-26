@@ -193,6 +193,32 @@ export default function DraftEditorPage() {
     setFinalHashtags(next);
   }
 
+  function replaceGeneratedHashtags() {
+    if (!generated?.hashtags?.length) return;
+    const next = generated.hashtags
+      .map(normalizeHashtag)
+      .filter(Boolean)
+      .join(" ");
+    setFinalHashtags(next);
+  }
+
+  function mergeGeneratedHashtags() {
+    if (!generated?.hashtags?.length) return;
+
+    const current = parseHashtags(finalHashtags)
+      .map(normalizeHashtag)
+      .filter(Boolean);
+    const incoming = generated.hashtags.map(normalizeHashtag).filter(Boolean);
+    const merged = Array.from(new Set([...current, ...incoming]));
+
+    setFinalHashtags(merged.join(" "));
+  }
+
+  function useGeneratedAccessibility() {
+    if (!generated?.accessibility_text) return;
+    setFinalAccessibility(generated.accessibility_text);
+  }
+
   const selectedHashtagSet = useMemo(() => {
     return new Set(parseHashtags(finalHashtags).map(normalizeHashtag));
   }, [finalHashtags]);
@@ -227,7 +253,9 @@ export default function DraftEditorPage() {
   async function runGenerate(seedCaption?: string) {
     try {
       generateState.start(
-        seedCaption ? "Generating caption variants..." : "Generating draft...",
+        seedCaption
+          ? "Generating caption variants..."
+          : "Generating suggestions...",
       );
 
       const payload = {
@@ -261,32 +289,13 @@ export default function DraftEditorPage() {
       const generatedResult = await generatePost(resolvedPostId, seedCaption);
       setGenerated(generatedResult);
 
-      const nextCaption =
-        generatedResult.caption_option_2 ||
-        generatedResult.caption_option_3 ||
-        generatedResult.caption_option_1 ||
-        "";
-
-      const nextHashtags = (generatedResult.hashtags || []).join(" ");
-      const nextAccessibility = generatedResult.accessibility_text || "";
-
-      setFinalCaption(nextCaption);
-      setFinalHashtags(nextHashtags);
-      setFinalAccessibility(nextAccessibility);
-
-      await saveDraftContent(resolvedPostId, {
-        draft_caption_current: nextCaption,
-        draft_hashtags_current: nextHashtags,
-        draft_accessibility_current: nextAccessibility,
-      });
-
       generateState.succeed(
-        seedCaption ? "Caption variants generated." : "Draft generated.",
+        seedCaption ? "Caption variants generated." : "Suggestions generated.",
       );
     } catch (err) {
       console.error(err);
       generateState.fail(
-        err instanceof Error ? err.message : "Failed to generate draft.",
+        err instanceof Error ? err.message : "Failed to generate suggestions.",
       );
     }
   }
@@ -421,7 +430,7 @@ export default function DraftEditorPage() {
       </section>
 
       <section aria-labelledby="generated-heading" className="draft-generated">
-        <h3 id="generated-heading">Generated Draft</h3>
+        <h3 id="generated-heading">Suggestions & Draft</h3>
 
         {generated ? (
           <section>
@@ -456,137 +465,177 @@ export default function DraftEditorPage() {
                   </div>
                 ))}
             </div>
+
+            <section>
+              <h4>Generated Hashtags</h4>
+              <p className="helper-text">
+                These are suggestions. They do not replace your draft unless you
+                choose to apply them.
+              </p>
+
+              <div className="token-row">
+                {(generated.hashtags || []).map((tag) => {
+                  const normalized = normalizeHashtag(tag);
+                  if (!normalized) return null;
+
+                  return (
+                    <span key={normalized} className="token-chip">
+                      {normalized}
+                    </span>
+                  );
+                })}
+              </div>
+
+              <div className="approval-action-row">
+                <button type="button" onClick={mergeGeneratedHashtags}>
+                  Merge Hashtags
+                </button>
+                <button type="button" onClick={replaceGeneratedHashtags}>
+                  Replace Hashtags
+                </button>
+              </div>
+            </section>
+
+            <section>
+              <h4>Generated Accessibility</h4>
+              <textarea readOnly value={generated.accessibility_text || ""} />
+              <div className="approval-action-row">
+                <button type="button" onClick={useGeneratedAccessibility}>
+                  Use Accessibility
+                </button>
+              </div>
+            </section>
           </section>
         ) : (
           <p>
-            Generate a draft to see caption options based on the selected media
+            Generate suggestions to see caption options, hashtags, and
+            accessibility based on the selected media
             {event ? " and event context." : "."}
           </p>
         )}
 
-        {(finalCaption || finalHashtags || finalAccessibility) && (
-          <section>
-            <h4>Finalize Draft</h4>
+        <section>
+          <h4>Finalize Draft</h4>
+          <p className="helper-text">
+            Your draft content lives here. You can start writing immediately or
+            generate suggestions first.
+          </p>
+
+          <div className="form-row">
+            <label htmlFor="final-caption">Final Caption *</label>
+            <textarea
+              id="final-caption"
+              value={finalCaption}
+              onChange={(e) => setFinalCaption(e.target.value)}
+              placeholder="Write your caption here, or generate suggestions to get started."
+            />
             <p className="helper-text">
-              You can keep editing this in Drafts. When ready, send it to
-              Approvals.
+              This is the caption that will be sent forward for approval.
             </p>
+          </div>
 
-            <div className="form-row">
-              <label htmlFor="final-caption">Final Caption *</label>
-              <textarea
-                id="final-caption"
-                value={finalCaption}
-                onChange={(e) => setFinalCaption(e.target.value)}
-              />
-              <p className="helper-text">
-                This is the caption that will be sent forward for approval.
-              </p>
-            </div>
+          <CreditsEditor
+            entries={creditEntries}
+            onEntriesChange={setCreditEntries}
+            preset={creditPreset}
+            onPresetChange={setCreditPreset}
+            template={creditTemplate}
+            onTemplateChange={setCreditTemplate}
+            showStyleControls
+          />
 
-            <CreditsEditor
-              entries={creditEntries}
-              onEntriesChange={setCreditEntries}
-              preset={creditPreset}
-              onPresetChange={setCreditPreset}
-              template={creditTemplate}
-              onTemplateChange={setCreditTemplate}
-              showStyleControls
+          <div className="form-row">
+            <label htmlFor="final-hashtags">Final Hashtags</label>
+            <textarea
+              id="final-hashtags"
+              value={finalHashtags}
+              onChange={(e) => setFinalHashtags(e.target.value)}
             />
+            <p className="helper-text">
+              Optional. Space-delimited hashtags are supported here.
+            </p>
+          </div>
 
+          {parseHashtags(finalHashtags).length > 0 && (
             <div className="form-row">
-              <label htmlFor="final-hashtags">Final Hashtags</label>
-              <textarea
-                id="final-hashtags"
-                value={finalHashtags}
-                onChange={(e) => setFinalHashtags(e.target.value)}
-              />
-              <p className="helper-text">
-                Optional. Space-delimited hashtags are supported here.
-              </p>
-            </div>
-
-            {parseHashtags(finalHashtags).length > 0 && (
-              <div className="form-row">
-                <label>Current Hashtags</label>
-                <div className="token-row">
-                  {parseHashtags(finalHashtags).map((tag) => (
-                    <span key={tag} className="token-chip">
-                      {normalizeHashtag(tag)}
-                    </span>
-                  ))}
-                </div>
+              <label>Current Hashtags</label>
+              <div className="token-row">
+                {parseHashtags(finalHashtags).map((tag) => (
+                  <span key={tag} className="token-chip">
+                    {normalizeHashtag(tag)}
+                  </span>
+                ))}
               </div>
-            )}
+            </div>
+          )}
 
-            {suggestedHashtags.length > 0 && (
-              <div className="form-row">
-                <label>Other Hashtags?</label>
-                <p className="helper-text">
-                  Suggested from generated SEO keywords. Click to add without
-                  duplicates.
-                </p>
-                <div className="token-row">
-                  {suggestedHashtags.map((tag) => (
-                    <button
-                      key={tag}
-                      type="button"
-                      className="token-chip token-chip-button"
-                      onClick={() => addHashtag(tag)}
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
+          {suggestedHashtags.length > 0 && (
             <div className="form-row">
-              <label htmlFor="final-accessibility">
-                Final Accessibility Text
-              </label>
+              <label>Other Hashtags?</label>
               <p className="helper-text">
-                Optional. Generated from media analysis. Edit this if the
-                description needs correction.
+                Suggested from generated SEO keywords. Click to add without
+                duplicates.
               </p>
-              <textarea
-                id="final-accessibility"
-                value={finalAccessibility}
-                onChange={(e) => setFinalAccessibility(e.target.value)}
-              />
+              <div className="token-row">
+                {suggestedHashtags.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    className="token-chip token-chip-button"
+                    onClick={() => addHashtag(tag)}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
             </div>
+          )}
 
-            <div className="approval-action-row">
-              <button
-                type="button"
-                disabled={saveState.loading}
-                onClick={handleSaveDraft}
-              >
-                {saveState.loading ? "Saving..." : "Save Draft"}
-              </button>
-
-              <button
-                type="button"
-                disabled={approvalState.loading}
-                onClick={handleSendToApprovals}
-              >
-                {approvalState.loading ? "Sending..." : "Send to Approvals"}
-              </button>
-            </div>
-
-            <StatusMessage
-              loading={saveState.loading}
-              status={saveState.status}
-              error={saveState.error}
+          <div className="form-row">
+            <label htmlFor="final-accessibility">
+              Final Accessibility Text
+            </label>
+            <p className="helper-text">
+              Optional. Generated from media analysis. Edit this if the
+              description needs correction.
+            </p>
+            <textarea
+              id="final-accessibility"
+              value={finalAccessibility}
+              onChange={(e) => setFinalAccessibility(e.target.value)}
             />
+          </div>
 
-            <StatusMessage
-              loading={approvalState.loading}
-              status={approvalState.status}
-              error={approvalState.error}
-            />
-          </section>
-        )}
+          <div className="approval-action-row">
+            <button
+              type="button"
+              disabled={saveState.loading}
+              onClick={handleSaveDraft}
+            >
+              {saveState.loading ? "Saving..." : "Save Draft"}
+            </button>
+
+            <button
+              type="button"
+              disabled={approvalState.loading}
+              onClick={handleSendToApprovals}
+            >
+              {approvalState.loading ? "Sending..." : "Send to Approvals"}
+            </button>
+          </div>
+
+          <StatusMessage
+            loading={saveState.loading}
+            status={saveState.status}
+            error={saveState.error}
+          />
+
+          <StatusMessage
+            loading={approvalState.loading}
+            status={approvalState.status}
+            error={approvalState.error}
+          />
+        </section>
       </section>
 
       <div className="approval-review-layout">
@@ -718,7 +767,9 @@ export default function DraftEditorPage() {
 
               <div className="approval-action-row">
                 <button type="submit" disabled={generateState.loading}>
-                  {generateState.loading ? "Generating..." : "Generate Draft"}
+                  {generateState.loading
+                    ? "Generating..."
+                    : "Generate Suggestions"}
                 </button>
 
                 <button

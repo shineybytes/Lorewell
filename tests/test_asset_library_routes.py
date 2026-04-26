@@ -2,14 +2,6 @@ from tests.helpers import create_event, upload_asset, write_temp_file
 
 
 def test_upload_asset_without_event(client, mocker):
-    mocker.patch(
-        "app.main.analyze_media",
-        return_value={
-            "visual_summary": "Unassigned asset summary",
-            "accessibility_text": "Unassigned asset accessibility text",
-        },
-    )
-
     media_path = write_temp_file("tests_temp_no_event.jpg", b"fake jpeg bytes")
 
     try:
@@ -22,7 +14,9 @@ def test_upload_asset_without_event(client, mocker):
         assert response.status_code == 200
         body = response.json()
         assert body["media_type"] == "image"
-        assert body["analysis_status"] == "analyzed"
+        assert body["analysis_status"] == "pending"
+        assert body["vision_summary_generated"] is None
+        assert body["accessibility_text_generated"] is None
 
         asset_id = body["asset_id"]
         get_resp = client.get(f"/assets/{asset_id}")
@@ -149,7 +143,7 @@ def test_update_asset_event_rejects_missing_event(client):
 
 def test_propose_asset_analysis_uses_event_context(client, mocker):
     analyze_mock = mocker.patch(
-        "app.main.analyze_media",
+        "app.services.assets.analyze_media",
         return_value={
             "visual_summary": "Context-aware summary",
             "accessibility_text": "Context-aware accessibility",

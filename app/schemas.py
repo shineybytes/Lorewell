@@ -44,6 +44,10 @@ class AssetResponse(BaseModel):
     analysis_status: str
     display_name: str | None
     created_at: datetime
+    captured_at_guess: datetime | None = None
+    captured_at_guess_source: str | None = None
+    captured_at_guess_confidence: str | None = None
+    captured_at_guess_matched_text: str | None = None
     vision_summary_generated: str | None = None
     accessibility_text_generated: str | None = None
     accessibility_text_final: str | None = None

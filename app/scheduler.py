@@ -10,6 +10,7 @@ from app.instagram import (
     wait_until_container_ready,
 )
 from app.models import ApprovedPost, Asset, Schedule
+from app.domain.statuses import ScheduleStatus
 
 
 SCHEDULER_JOB_ID = "due_posts"
@@ -30,14 +31,14 @@ def process_due_posts() -> None:
 
         stale_publishing = (
             db.query(Schedule)
-            .filter(Schedule.status == "publishing")
+            .filter(Schedule.status == ScheduleStatus.PUBLISHING)
             .filter(Schedule.publishing_started_at.is_not(None))
             .filter(Schedule.publishing_started_at <= stale_cutoff)
             .all()
         )
 
         for schedule in stale_publishing:
-            schedule.status = "failed"
+            schedule.status = ScheduleStatus.FAILED
             schedule.error_message = "Publishing attempt became stale and was marked failed"
             schedule.last_attempt_error = schedule.error_message
             schedule.publishing_started_at = None
@@ -47,7 +48,7 @@ def process_due_posts() -> None:
 
         schedules = (
             db.query(Schedule)
-            .filter(Schedule.status == "scheduled")
+            .filter(Schedule.status == ScheduleStatus.SCHEDULED)
             .filter(Schedule.publish_at <= now)
             .all()
         )
@@ -55,7 +56,7 @@ def process_due_posts() -> None:
 
         for schedule in schedules:
             try:
-                schedule.status = "publishing"
+                schedule.status = ScheduleStatus.PUBLISHING
                 schedule.publishing_started_at = datetime.now(UTC).replace(tzinfo=None)
                 schedule.publish_attempts += 1
                 schedule.last_attempt_error = None
@@ -103,7 +104,7 @@ def process_due_posts() -> None:
                 wait_until_container_ready(container_id)
                 published_id = publish_container(container_id)
 
-                schedule.status = "published"
+                schedule.status = ScheduleStatus.PUBLISHED
                 schedule.published_instagram_id = published_id
                 schedule.error_message = None
                 schedule.last_attempt_error = None
@@ -113,7 +114,7 @@ def process_due_posts() -> None:
                 db.refresh(schedule)
 
             except Exception as e:
-                schedule.status = "failed"
+                schedule.status = ScheduleStatus.FAILED
                 schedule.error_message = str(e)
                 schedule.last_attempt_error = str(e)
                 schedule.publishing_started_at = None

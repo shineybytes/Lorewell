@@ -12,6 +12,8 @@ import StatusMessage from "../components/StatusMessage";
 import InstagramPreview from "../components/InstagramPreview";
 import { useAsyncState } from "../hooks/useAsyncState";
 import { friendlyPublishError } from "../utils/error";
+import ListToolbar from "../components/ListToolbar";
+import ListSummary from "../components/ListSummary";
 
 type ScheduleTab =
   | "all"
@@ -27,6 +29,10 @@ export default function SchedulesPage() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [activeTab, setActiveTab] = useState<ScheduleTab>("recent");
   const [sortDirection, setSortDirection] = useState<SortDirection>("newest");
+  const [scheduleSearch, setScheduleSearch] = useState("");
+  const [expandedScheduleId, setExpandedScheduleId] = useState<number | null>(
+    null,
+  );
   const loadState = useAsyncState();
 
   const [actionState, setActionState] = useState<
@@ -149,8 +155,35 @@ export default function SchedulesPage() {
 
   const visibleSchedules = useMemo(() => {
     const subset = scheduleViews[activeTab];
+    const query = scheduleSearch.trim().toLowerCase();
 
-    return subset.slice().sort((a, b) => {
+    const filtered = query
+      ? subset.filter((s) => {
+          const id = String(s.id);
+          const approvedPostId = String(s.approved_post_id);
+          const publishAt = (s.publish_at || "").toLowerCase();
+          const timezone = (s.publish_timezone || "").toLowerCase();
+          const status = (s.status || "").toLowerCase();
+          const caption = (s.caption_final || "").toLowerCase();
+          const hashtags = (s.hashtags_final || []).join(" ").toLowerCase();
+          const assetPath = (s.asset_file_path || "").toLowerCase();
+          const error = (s.error_message || "").toLowerCase();
+
+          return (
+            id.includes(query) ||
+            approvedPostId.includes(query) ||
+            publishAt.includes(query) ||
+            timezone.includes(query) ||
+            status.includes(query) ||
+            caption.includes(query) ||
+            hashtags.includes(query) ||
+            assetPath.includes(query) ||
+            error.includes(query)
+          );
+        })
+      : subset;
+
+    return filtered.slice().sort((a, b) => {
       const aTime = new Date(a.publish_at).getTime();
       const bTime = new Date(b.publish_at).getTime();
 
@@ -160,7 +193,11 @@ export default function SchedulesPage() {
 
       return bTime - aTime;
     });
-  }, [activeTab, scheduleViews, sortDirection]);
+  }, [activeTab, scheduleViews, sortDirection, scheduleSearch]);
+
+  function toggleExpandedSchedule(id: number) {
+    setExpandedScheduleId((current) => (current === id ? null : id));
+  }
 
   return (
     <section aria-labelledby="schedules-heading">
@@ -201,277 +238,319 @@ export default function SchedulesPage() {
         ))}
       </div>
 
-      <div className="schedule-toolbar">
-        <div className="schedule-toolbar-left">
-          <button
-            type="button"
-            className={
-              sortDirection === "newest" ? "tab-button active" : "tab-button"
-            }
-            onClick={() => setSortDirection("newest")}
-          >
-            Newest First
-          </button>
+      <ListToolbar
+        searchId="schedule-search"
+        searchValue={scheduleSearch}
+        onSearchChange={setScheduleSearch}
+        searchPlaceholder="Search id, status, publish time, caption, hashtags, asset path, or error"
+        sortId="schedule-sort"
+        sortValue={sortDirection}
+        onSortChange={(v) => setSortDirection(v as "newest" | "oldest")}
+        sortOptions={[
+          { value: "newest", label: "Newest first" },
+          { value: "oldest", label: "Oldest first" },
+        ]}
+        rightContent={
+          <>
+            {activeTab === "attention" && (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!confirm("Archive all failed schedules?")) return;
+                  await archiveAllFailed();
+                  await loadData(false);
+                }}
+              >
+                Archive All
+              </button>
+            )}
 
-          <button
-            type="button"
-            className={
-              sortDirection === "oldest" ? "tab-button active" : "tab-button"
-            }
-            onClick={() => setSortDirection("oldest")}
-          >
-            Oldest First
-          </button>
-        </div>
-
-        <div className="schedule-toolbar-right">
-          {activeTab === "attention" && (
-            <button
-              type="button"
-              onClick={async () => {
-                if (!confirm("Archive all failed schedules?")) return;
-                await archiveAllFailed();
-                await loadData(false);
-              }}
-            >
-              Archive All
-            </button>
-          )}
-
-          {activeTab === "archived" && (
-            <button
-              type="button"
-              onClick={async () => {
-                if (!confirm("Restore all archived failures?")) return;
-                await restoreAllFailed();
-                await loadData(false);
-              }}
-            >
-              Restore All
-            </button>
-          )}
-        </div>
-      </div>
+            {activeTab === "archived" && (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!confirm("Restore all archived failures?")) return;
+                  await restoreAllFailed();
+                  await loadData(false);
+                }}
+              >
+                Restore All
+              </button>
+            )}
+          </>
+        }
+      />
+      <ListSummary
+        visibleCount={visibleSchedules.length}
+        totalCount={counts[activeTab]}
+        noun="schedules"
+        query={scheduleSearch}
+      />
 
       {!visibleSchedules.length && !loadState.loading && !loadState.error ? (
         <p>No schedules in this view.</p>
       ) : (
-        <ul className="card-list">
-          {visibleSchedules.map((s) => {
-            const previewAsset =
-              s.asset_file_path && s.asset_media_type
-                ? {
-                    id: s.selected_asset_id ?? 0,
-                    event_id: 0,
-                    file_path: s.asset_file_path,
-                    media_type: s.asset_media_type,
-                    analysis_status: "approved",
-                    vision_summary_generated: null,
-                    accessibility_text_generated: s.accessibility_text ?? null,
-                    accessibility_text_final: s.accessibility_text ?? null,
-                    analysis_error_message: null,
-                    analysis_user_correction: null,
-                  }
-                : null;
+        <>
+          <div className="schedule-index-header" aria-hidden="true">
+            <span>ID</span>
+            <span>Status</span>
+            <span>Publish Time</span>
+            <span>Post</span>
+          </div>
 
-            const scheduleAction = actionState[s.id] || {
-              loading: false,
-              status: "",
-              error: "",
-            };
+          <ul className="schedule-index-list">
+            {visibleSchedules.map((s) => {
+              const previewAsset =
+                s.asset_file_path && s.asset_media_type
+                  ? {
+                      id: s.selected_asset_id ?? 0,
+                      event_id: 0,
+                      file_path: s.asset_file_path,
+                      media_type: s.asset_media_type,
+                      analysis_status: "approved",
+                      vision_summary_generated: null,
+                      accessibility_text_generated:
+                        s.accessibility_text ?? null,
+                      accessibility_text_final: s.accessibility_text ?? null,
+                      analysis_error_message: null,
+                      analysis_user_correction: null,
+                    }
+                  : null;
 
-            const canUnschedule =
-              s.status === "scheduled" || s.status === "publishing";
+              const scheduleAction = actionState[s.id] || {
+                loading: false,
+                status: "",
+                error: "",
+              };
 
-            return (
-              <li key={s.id}>
-                <article className="card">
-                  <div className="approval-review-layout">
-                    <div className="approval-preview-column">
-                      <InstagramPreview
-                        asset={previewAsset}
-                        caption={s.caption_final}
-                        hashtags={s.hashtags_final}
-                        profileLabel="Scheduled Preview"
-                      />
-                    </div>
+              const canUnschedule =
+                s.status === "scheduled" || s.status === "publishing";
 
-                    <div className="approval-details-column">
-                      <h3>Schedule #{s.id}</h3>
+              const isExpanded = expandedScheduleId === s.id;
 
-                      <p>
-                        <strong>Approved Post:</strong> {s.approved_post_id}
-                      </p>
-                      <p>
-                        <strong>Publish At (UTC):</strong> {s.publish_at}
-                      </p>
-                      <p>
-                        <strong>Timezone:</strong> {s.publish_timezone}
-                      </p>
-                      <p>
-                        <strong>Status:</strong> {s.status}
-                      </p>
-                      <p>
-                        <strong>Instagram:</strong>{" "}
-                        {s.published_instagram_id
-                          ? `Published to Instagram (Post ID: ${s.published_instagram_id})`
-                          : "Not published yet"}
-                      </p>
-                      <p>
-                        <strong>Error:</strong>{" "}
-                        {s.error_message
-                          ? friendlyPublishError(s.error_message)
-                          : "None"}
-                      </p>
-
-                      {canUnschedule && (
-                        <button
-                          type="button"
-                          className="button-danger"
-                          disabled={scheduleAction.loading}
-                          onClick={async () => {
-                            try {
-                              if (!confirm("Unschedule this post?")) {
-                                return;
-                              }
-
-                              setScheduleActionState(s.id, {
-                                loading: true,
-                                status: "Unscheduling post...",
-                                error: "",
-                              });
-
-                              await deleteSchedule(s.id);
-                              await loadData(false);
-
-                              setScheduleActionState(s.id, {
-                                loading: false,
-                                status: "Post unscheduled.",
-                                error: "",
-                              });
-                            } catch (err) {
-                              console.error(err);
-                              setScheduleActionState(s.id, {
-                                loading: false,
-                                status: "",
-                                error:
-                                  err instanceof Error
-                                    ? err.message
-                                    : "Failed to unschedule post.",
-                              });
-                            }
-                          }}
-                        >
-                          {scheduleAction.loading
-                            ? "Unscheduling..."
-                            : "Unschedule"}
-                        </button>
-                      )}
-
-                      {(activeTab === "attention" ||
-                        activeTab === "archived") && (
-                        <>
-                          <p>
-                            <strong>Archived:</strong>{" "}
-                            {s.failure_acknowledged ? "Yes" : "No"}
-                          </p>
-
-                          {activeTab === "attention" && (
-                            <button
-                              type="button"
-                              disabled={scheduleAction.loading}
-                              onClick={async () => {
-                                try {
-                                  setScheduleActionState(s.id, {
-                                    loading: true,
-                                    status: "Retrying publish...",
-                                    error: "",
-                                  });
-
-                                  await retrySchedule(s.id);
-                                  await loadData(false);
-
-                                  setScheduleActionState(s.id, {
-                                    loading: false,
-                                    status: "Retry scheduled.",
-                                    error: "",
-                                  });
-                                } catch (err) {
-                                  console.error(err);
-                                  setScheduleActionState(s.id, {
-                                    loading: false,
-                                    status: "",
-                                    error:
-                                      err instanceof Error
-                                        ? err.message
-                                        : "Failed to retry publish.",
-                                  });
-                                }
-                              }}
-                            >
-                              {scheduleAction.loading
-                                ? "Retrying..."
-                                : "Retry Publishing"}
-                            </button>
-                          )}
-
-                          <button
-                            type="button"
-                            disabled={scheduleAction.loading}
-                            onClick={async () => {
-                              try {
-                                setScheduleActionState(s.id, {
-                                  loading: true,
-                                  status: s.failure_acknowledged
-                                    ? "Restoring failure to active queue..."
-                                    : "Archiving failure...",
-                                  error: "",
-                                });
-
-                                await toggleScheduleAcknowledged(s.id);
-                                await loadData(false);
-
-                                setScheduleActionState(s.id, {
-                                  loading: false,
-                                  status: s.failure_acknowledged
-                                    ? "Failure restored to Needs Attention."
-                                    : "Failure archived.",
-                                  error: "",
-                                });
-                              } catch (err) {
-                                console.error(err);
-                                setScheduleActionState(s.id, {
-                                  loading: false,
-                                  status: "",
-                                  error:
-                                    err instanceof Error
-                                      ? err.message
-                                      : "Failed to update failure status.",
-                                });
-                              }
-                            }}
-                          >
-                            {scheduleAction.loading
-                              ? "Updating..."
-                              : s.failure_acknowledged
-                                ? "Restore to Needs Attention"
-                                : "Archive Failure"}
-                          </button>
-                        </>
-                      )}
-
-                      <StatusMessage
-                        loading={scheduleAction.loading}
-                        status={scheduleAction.status}
-                        error={scheduleAction.error}
-                      />
-                    </div>
+              return (
+                <li key={s.id} className="schedule-index-row">
+                  <div
+                    className="schedule-index-main"
+                    onClick={() => toggleExpandedSchedule(s.id)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        toggleExpandedSchedule(s.id);
+                      }
+                    }}
+                  >
+                    <span>#{s.id}</span>
+                    <span>{s.status}</span>
+                    <span>{s.publish_at}</span>
+                    <span>{s.approved_post_id}</span>
                   </div>
-                </article>
-              </li>
-            );
-          })}
-        </ul>
+
+                  {isExpanded && (
+                    <div className="schedule-index-details">
+                      <article className="card">
+                        <div className="approval-review-layout">
+                          <div className="approval-preview-column">
+                            <InstagramPreview
+                              asset={previewAsset}
+                              caption={s.caption_final}
+                              hashtags={s.hashtags_final}
+                              profileLabel="Scheduled Preview"
+                            />
+                          </div>
+
+                          <div className="approval-details-column">
+                            <h3>Schedule #{s.id}</h3>
+
+                            <p>
+                              <strong>Approved Post:</strong>{" "}
+                              {s.approved_post_id}
+                            </p>
+                            <p>
+                              <strong>Publish At (UTC):</strong> {s.publish_at}
+                            </p>
+                            <p>
+                              <strong>Timezone:</strong> {s.publish_timezone}
+                            </p>
+                            <p>
+                              <strong>Status:</strong> {s.status}
+                            </p>
+                            <p>
+                              <strong>Instagram:</strong>{" "}
+                              {s.published_instagram_id
+                                ? `Published to Instagram (Post ID: ${s.published_instagram_id})`
+                                : "Not published yet"}
+                            </p>
+                            <p>
+                              <strong>Error:</strong>{" "}
+                              {s.error_message
+                                ? friendlyPublishError(s.error_message)
+                                : "None"}
+                            </p>
+
+                            {canUnschedule && (
+                              <button
+                                type="button"
+                                className="button-danger"
+                                disabled={scheduleAction.loading}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+
+                                  try {
+                                    if (!confirm("Unschedule this post?")) {
+                                      return;
+                                    }
+
+                                    setScheduleActionState(s.id, {
+                                      loading: true,
+                                      status: "Unscheduling post...",
+                                      error: "",
+                                    });
+
+                                    await deleteSchedule(s.id);
+                                    await loadData(false);
+
+                                    setScheduleActionState(s.id, {
+                                      loading: false,
+                                      status: "Post unscheduled.",
+                                      error: "",
+                                    });
+
+                                    setExpandedScheduleId((current) =>
+                                      current === s.id ? null : current,
+                                    );
+                                  } catch (err) {
+                                    console.error(err);
+                                    setScheduleActionState(s.id, {
+                                      loading: false,
+                                      status: "",
+                                      error:
+                                        err instanceof Error
+                                          ? err.message
+                                          : "Failed to unschedule post.",
+                                    });
+                                  }
+                                }}
+                              >
+                                {scheduleAction.loading
+                                  ? "Unscheduling..."
+                                  : "Unschedule"}
+                              </button>
+                            )}
+
+                            {(activeTab === "attention" ||
+                              activeTab === "archived") && (
+                              <>
+                                <p>
+                                  <strong>Archived:</strong>{" "}
+                                  {s.failure_acknowledged ? "Yes" : "No"}
+                                </p>
+
+                                {activeTab === "attention" && (
+                                  <button
+                                    type="button"
+                                    disabled={scheduleAction.loading}
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+
+                                      try {
+                                        setScheduleActionState(s.id, {
+                                          loading: true,
+                                          status: "Retrying publish...",
+                                          error: "",
+                                        });
+
+                                        await retrySchedule(s.id);
+                                        await loadData(false);
+
+                                        setScheduleActionState(s.id, {
+                                          loading: false,
+                                          status: "Retry scheduled.",
+                                          error: "",
+                                        });
+                                      } catch (err) {
+                                        console.error(err);
+                                        setScheduleActionState(s.id, {
+                                          loading: false,
+                                          status: "",
+                                          error:
+                                            err instanceof Error
+                                              ? err.message
+                                              : "Failed to retry publish.",
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    {scheduleAction.loading
+                                      ? "Retrying..."
+                                      : "Retry Publishing"}
+                                  </button>
+                                )}
+
+                                <button
+                                  type="button"
+                                  disabled={scheduleAction.loading}
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+
+                                    try {
+                                      setScheduleActionState(s.id, {
+                                        loading: true,
+                                        status: s.failure_acknowledged
+                                          ? "Restoring failure to active queue..."
+                                          : "Archiving failure...",
+                                        error: "",
+                                      });
+
+                                      await toggleScheduleAcknowledged(s.id);
+                                      await loadData(false);
+
+                                      setScheduleActionState(s.id, {
+                                        loading: false,
+                                        status: s.failure_acknowledged
+                                          ? "Failure restored to Needs Attention."
+                                          : "Failure archived.",
+                                        error: "",
+                                      });
+                                    } catch (err) {
+                                      console.error(err);
+                                      setScheduleActionState(s.id, {
+                                        loading: false,
+                                        status: "",
+                                        error:
+                                          err instanceof Error
+                                            ? err.message
+                                            : "Failed to update failure status.",
+                                      });
+                                    }
+                                  }}
+                                >
+                                  {scheduleAction.loading
+                                    ? "Updating..."
+                                    : s.failure_acknowledged
+                                      ? "Restore to Needs Attention"
+                                      : "Archive Failure"}
+                                </button>
+                              </>
+                            )}
+
+                            <StatusMessage
+                              loading={scheduleAction.loading}
+                              status={scheduleAction.status}
+                              error={scheduleAction.error}
+                            />
+                          </div>
+                        </div>
+                      </article>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
     </section>
   );

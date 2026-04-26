@@ -122,11 +122,6 @@ legend {
   font-size: 0.95rem;
 }
 
-/* Inline field rows for compact label + control layouts
-   Used on Assets page for:
-   Asset Name: [input]
-   Event: X | Re-assign Event: [select]
-*/
 .inline-form-row {
   display: flex;
   align-items: center;
@@ -214,6 +209,31 @@ a:focus {
   color: #b00020;
 }
 
+.status-ready,
+.status-done,
+.status-analyzed {
+  color: #0a7a2a;
+}
+
+.status-warning,
+.status-pending {
+  color: #8a5a00;
+}
+
+.status-blocked,
+.status-failed {
+  color: #b00020;
+}
+
+.status-uploading {
+  color: #1a73e8;
+}
+
+.status-approved {
+  color: #2563eb;
+  font-weight: 600;
+}
+
 /* =========================
    Cards / Lists
    ========================= */
@@ -236,8 +256,12 @@ a:focus {
   border: 1px solid #ccc;
 }
 
-.generated-option textarea {
+.generated-option textarea,
+.draft-generated textarea {
   width: 100%;
+}
+
+.generated-option textarea {
   min-height: 6rem;
   margin-bottom: 0.75rem;
 }
@@ -246,7 +270,6 @@ a:focus {
    Media Preview
    ========================= */
 
-/* Clickable preview wrapper */
 .asset-preview-wrapper {
   border: none;
   background: none;
@@ -254,16 +277,12 @@ a:focus {
   cursor: zoom-in;
 }
 
-/* Default preview sizing */
 .asset-preview {
   width: min(100%, 320px);
   height: auto;
   margin-bottom: 1rem;
 }
 
-/* Compact Asset Library preview:
-   cover for better scanning in the library
-*/
 .asset-preview-wrapper.compact .asset-preview,
 .asset-library-panel .asset-preview {
   width: 180px;
@@ -272,7 +291,6 @@ a:focus {
   border-radius: 6px;
 }
 
-/* Expanded preview modal */
 .asset-preview-modal {
   position: fixed;
   inset: 0;
@@ -372,7 +390,6 @@ a:focus {
 
 /* =========================
    Review / Two-Pane Layout
-   Used by Approvals, Schedules, Assets
    ========================= */
 
 .approval-review-layout {
@@ -413,6 +430,10 @@ a:focus {
   gap: 0.75rem;
 }
 
+.approval-action-row .form-row {
+  min-width: 180px;
+}
+
 .tab-row {
   display: flex;
   flex-wrap: wrap;
@@ -431,6 +452,32 @@ a:focus {
 .tab-button.active {
   border-color: #333;
   font-weight: 700;
+}
+
+.asset-library-controls {
+  margin-bottom: 0.5rem;
+}
+
+.asset-library-tabs {
+  margin: 0.5rem 0 0.5rem;
+}
+
+.asset-library-summary {
+  margin: 0.25rem 0 0.5rem;
+}
+
+.asset-selection-toolbar {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.schedule-toolbar-right {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.schedule-toolbar-right button {
+  border-color: #b00020;
 }
 
 /* =========================
@@ -485,33 +532,6 @@ details[open] > summary {
 }
 
 /* =========================
-   Schedule Toolbar
-   ========================= */
-
-.schedule-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin: 1rem 0 1.5rem;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.schedule-toolbar-left {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.schedule-toolbar-right {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.schedule-toolbar-right button {
-  border-color: #b00020;
-}
-
-/* =========================
    Token / Chip UI
    ========================= */
 
@@ -549,6 +569,411 @@ progress {
 }
 
 /* =========================
+   Upload Staging
+   ========================= */
+
+.upload-staging-row {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.upload-stage-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.upload-stage-status-ready,
+.upload-stage-status-done {
+  color: #0a7a2a;
+}
+
+.upload-stage-status-warning {
+  color: #8a5a00;
+}
+
+.upload-stage-status-blocked,
+.upload-stage-status-failed {
+  color: #b00020;
+}
+
+.upload-stage-status-uploading {
+  color: #1a73e8;
+}
+
+.upload-staging-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.upload-staging-row-compact {
+  border-bottom: 1px solid #ddd;
+  padding: 0.4rem 0;
+}
+
+.upload-staging-main {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.upload-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-staging-details {
+  font-size: 0.8rem;
+  color: #555;
+  margin-top: 0.3rem;
+  padding-left: 0.5rem;
+}
+
+.upload-staging-legend,
+.asset-library-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.upload-staging-legend span:not(:last-child)::after,
+.asset-library-legend span:not(:last-child)::after {
+  content: "•";
+  margin-left: 0.75rem;
+  color: #aaa;
+}
+
+.upload-staging-legend span,
+.asset-library-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.upload-staging-toolbar {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.upload-staging-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0;
+}
+
+.upload-staging-summary span {
+  white-space: nowrap;
+}
+
+.upload-staging-filters {
+  margin: 0;
+}
+
+/* =========================
+   Asset Page
+   ========================= */
+
+#asset-search {
+  min-width: 260px;
+}
+
+.asset-card-header {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.asset-card-meta {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.asset-card-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.asset-card-meta-row label,
+.asset-card-meta-row span {
+  white-space: nowrap;
+}
+
+.asset-card-meta-row input,
+.asset-card-meta-row select {
+  flex: 1;
+  min-width: 180px;
+  max-width: 100%;
+}
+
+.asset-library-legend {
+  margin-top: 0;
+}
+
+.asset-index-header {
+  display: grid;
+  grid-template-columns:
+    56px minmax(220px, 2fr) 100px minmax(160px, 1.4fr)
+    110px 110px;
+  gap: 0.75rem;
+  padding: 0 0 0.5rem;
+  border-bottom: 1px solid #bbb;
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #444;
+}
+
+.asset-index-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.asset-index-row {
+  border-bottom: 1px solid #ddd;
+  padding: 0.5rem 0;
+}
+
+.asset-index-shell {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.asset-index-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 0.25rem;
+}
+
+.asset-index-main {
+  display: grid;
+  grid-template-columns:
+    minmax(220px, 2fr) 100px minmax(160px, 1.4fr)
+    110px 110px;
+  gap: 0.75rem;
+  align-items: center;
+  cursor: pointer;
+}
+
+.asset-index-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.asset-index-details {
+  margin-top: 0.75rem;
+  margin-left: calc(56px + 0.75rem);
+}
+
+/* =========================
+   Events Page
+   ========================= */
+
+#event-search {
+  min-width: 260px;
+}
+
+.event-index-header {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) 140px minmax(180px, 1.5fr) 180px;
+  gap: 0.75rem;
+  padding: 0 0 0.5rem;
+  border-bottom: 1px solid #bbb;
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #444;
+}
+
+.event-index-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.event-index-row {
+  border-bottom: 1px solid #ddd;
+  padding: 0.5rem 0;
+}
+
+.event-index-main {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) 140px minmax(180px, 1.5fr) 180px;
+  gap: 0.75rem;
+  align-items: center;
+  cursor: pointer;
+}
+
+.event-index-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.event-index-details {
+  margin-top: 0.75rem;
+}
+
+/* =========================
+   Drafts Page
+   ========================= */
+
+#draft-search {
+  min-width: 260px;
+}
+
+.draft-index-header {
+  display: grid;
+  grid-template-columns: minmax(260px, 2fr) 120px minmax(180px, 1.4fr) 180px;
+  gap: 0.75rem;
+  padding: 0 0 0.5rem;
+  border-bottom: 1px solid #bbb;
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #444;
+}
+
+.draft-index-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.draft-index-row {
+  border-bottom: 1px solid #ddd;
+  padding: 0.5rem 0;
+}
+
+.draft-index-main {
+  display: grid;
+  grid-template-columns: minmax(260px, 2fr) 120px minmax(180px, 1.4fr) 180px;
+  gap: 0.75rem;
+  align-items: center;
+  cursor: pointer;
+}
+
+.draft-index-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.draft-index-details {
+  margin-top: 0.75rem;
+}
+
+/* =========================
+   Approvals Page
+   ========================= */
+
+#approval-search {
+  min-width: 260px;
+}
+
+.approval-index-header {
+  display: grid;
+  grid-template-columns: minmax(260px, 2fr) 120px minmax(220px, 1.5fr) 80px;
+  gap: 0.75rem;
+  padding: 0 0 0.5rem;
+  border-bottom: 1px solid #bbb;
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #444;
+}
+
+.approval-index-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.approval-index-row {
+  border-bottom: 1px solid #ddd;
+  padding: 0.5rem 0;
+}
+
+.approval-index-main {
+  display: grid;
+  grid-template-columns: minmax(260px, 2fr) 120px minmax(220px, 1.5fr) 80px;
+  gap: 0.75rem;
+  align-items: center;
+  cursor: pointer;
+}
+
+.approval-index-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.approval-index-details {
+  margin-top: 0.75rem;
+}
+
+/* =========================
+   Schedules Page
+   ========================= */
+
+#schedule-search {
+  min-width: 260px;
+}
+
+.schedule-index-header {
+  display: grid;
+  grid-template-columns: 80px 140px 220px 120px;
+  gap: 0.75rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #bbb;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
+  color: #444;
+}
+
+.schedule-index-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.schedule-index-row {
+  border-bottom: 1px solid #ddd;
+  padding: 0.5rem 0;
+}
+
+.schedule-index-main {
+  display: grid;
+  grid-template-columns: 80px 140px 220px 120px;
+  gap: 0.75rem;
+  align-items: center;
+  cursor: pointer;
+}
+
+.schedule-index-details {
+  margin-top: 0.75rem;
+}
+
+/* =========================
    Responsive
    ========================= */
 
@@ -581,34 +1006,56 @@ progress {
     width: min(100%, 220px);
     height: 140px;
   }
+
+  .asset-library-legend {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .asset-library-legend span:not(:last-child)::after {
+    content: "";
+    margin-left: 0;
+  }
+
+  .asset-index-header,
+  .event-index-header,
+  .draft-index-header,
+  .approval-index-header,
+  .schedule-index-header {
+    display: none;
+  }
+
+  .asset-index-shell {
+    grid-template-columns: 40px 1fr;
+    gap: 0.5rem;
+  }
+
+  .asset-index-main,
+  .event-index-main,
+  .draft-index-main,
+  .approval-index-main,
+  .schedule-index-main {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .asset-index-details {
+    margin-left: 0;
+  }
+
+  #asset-search,
+  #event-search,
+  #draft-search,
+  #approval-search,
+  #schedule-search {
+    min-width: 100%;
+  }
 }
 
-.asset-card-header {
-  display: grid;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+#assets-heading + p {
+  margin-bottom: 0.5rem;
 }
 
-.asset-card-meta {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.asset-card-meta-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.asset-card-meta-row label,
-.asset-card-meta-row span {
-  white-space: nowrap;
-}
-
-.asset-card-meta-row input,
-.asset-card-meta-row select {
-  flex: 1;
-  min-width: 180px;
-  max-width: 100%;
+section[aria-labelledby="asset-library-heading"] {
+  margin-top: 0.5rem;
 }

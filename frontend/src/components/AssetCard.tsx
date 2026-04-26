@@ -15,6 +15,7 @@ type AssetCardProps = {
   eventId?: number | null;
   onRefresh: () => Promise<void>;
   compactPreview?: boolean;
+  collapsed?: boolean;
 };
 
 function filenameFromPath(filePath: string) {
@@ -37,6 +38,7 @@ export default function AssetCard({
   eventId,
   onRefresh,
   compactPreview = false,
+  collapsed = false,
 }: AssetCardProps) {
   const [correction, setCorrection] = useState(
     asset.analysis_user_correction || "",
@@ -73,15 +75,15 @@ export default function AssetCard({
       reanalyzeState.start(
         asset.media_type === "video"
           ? "Analyzing sampled video frames..."
-          : "Reanalyzing image...",
+          : "Analyzing image...",
       );
       await reanalyzeAsset(asset.id, correction);
       await onRefresh();
-      reanalyzeState.succeed("Asset reanalyzed.");
+      reanalyzeState.succeed("Asset analyzed.");
     } catch (err) {
       console.error(err);
       reanalyzeState.fail(
-        err instanceof Error ? err.message : "Failed to reanalyze asset.",
+        err instanceof Error ? err.message : "Failed to analyze asset.",
       );
     }
   }
@@ -146,6 +148,16 @@ export default function AssetCard({
             Create Draft
           </Link>
 
+          <button type="button" onClick={handleReanalyze}>
+            {reanalyzeState.loading
+              ? asset.media_type === "video"
+                ? "Analyzing video..."
+                : "Analyzing..."
+              : asset.analysis_status === "pending"
+                ? "Analyze"
+                : "Retry Analysis"}
+          </button>
+
           <button
             type="button"
             className="button-danger"
@@ -154,90 +166,80 @@ export default function AssetCard({
             Delete Asset
           </button>
         </div>
+
+        <StatusMessage
+          loading={reanalyzeState.loading}
+          status={reanalyzeState.status}
+          error={reanalyzeState.error}
+        />
       </div>
 
-      <div className="approval-details-column">
-        <details>
-          <summary>Show Details</summary>
+      {!collapsed && (
+        <div className="approval-details-column">
+          <details>
+            <summary>Show Details</summary>
 
-          <div className="form-row" style={{ marginTop: "1rem" }}>
-            <p>
-              <strong>Visual summary:</strong>
-            </p>
-            <p>{asset.vision_summary_generated || "None"}</p>
-          </div>
+            <div className="form-row" style={{ marginTop: "1rem" }}>
+              <p>
+                <strong>Visual summary:</strong>
+              </p>
+              <p>{asset.vision_summary_generated || "None"}</p>
+            </div>
 
-          <div>
-            <p>
-              <strong>Generated accessibility:</strong>
-            </p>
-            <p>{asset.accessibility_text_generated || "None"}</p>
-          </div>
+            <div>
+              <p>
+                <strong>Generated accessibility:</strong>
+              </p>
+              <p>{asset.accessibility_text_generated || "None"}</p>
+            </div>
 
-          <div>
-            <p>
-              <strong>Final accessibility:</strong>
-            </p>
-            <p>{asset.accessibility_text_final || "None"}</p>
-          </div>
+            <div>
+              <p>
+                <strong>Final accessibility:</strong>
+              </p>
+              <p>{asset.accessibility_text_final || "None"}</p>
+            </div>
 
-          <div className="form-row">
-            <label htmlFor={`correction-${asset.id}`}>Correction</label>
-            <textarea
-              id={`correction-${asset.id}`}
-              value={correction}
-              onChange={(e) => setCorrection(e.target.value)}
+            <div className="form-row">
+              <label htmlFor={`correction-${asset.id}`}>Correction</label>
+              <textarea
+                id={`correction-${asset.id}`}
+                value={correction}
+                onChange={(e) => setCorrection(e.target.value)}
+              />
+              <p className="helper-text">
+                Optional. Add clarification if the current analysis missed the
+                subject, setting, or action.
+              </p>
+            </div>
+
+            <div className="form-row">
+              <label htmlFor={`final-accessibility-${asset.id}`}>
+                Final Accessibility Text
+              </label>
+              <textarea
+                id={`final-accessibility-${asset.id}`}
+                value={finalAccessibility}
+                onChange={(e) => setFinalAccessibility(e.target.value)}
+              />
+            </div>
+
+            <button
+              type="button"
+              disabled={approveState.loading}
+              onClick={handleApproveAccessibility}
+            >
+              {approveState.loading ? "Saving..." : "Approve Accessibility"}
+            </button>
+
+            <StatusMessage
+              loading={approveState.loading}
+              status={approveState.status}
+              error={approveState.error}
             />
-            <p className="helper-text">
-              Optional. Add clarification if the current analysis missed the
-              subject, setting, or action.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            disabled={reanalyzeState.loading}
-            onClick={handleReanalyze}
-          >
-            {reanalyzeState.loading
-              ? asset.media_type === "video"
-                ? "Analyzing video..."
-                : "Reanalyzing..."
-              : "Reanalyze"}
-          </button>
-
-          <StatusMessage
-            loading={reanalyzeState.loading}
-            status={reanalyzeState.status}
-            error={reanalyzeState.error}
-          />
-
-          <div className="form-row">
-            <label htmlFor={`final-accessibility-${asset.id}`}>
-              Final Accessibility Text
-            </label>
-            <textarea
-              id={`final-accessibility-${asset.id}`}
-              value={finalAccessibility}
-              onChange={(e) => setFinalAccessibility(e.target.value)}
-            />
-          </div>
-
-          <button
-            type="button"
-            disabled={approveState.loading}
-            onClick={handleApproveAccessibility}
-          >
-            {approveState.loading ? "Saving..." : "Approve Accessibility"}
-          </button>
-
-          <StatusMessage
-            loading={approveState.loading}
-            status={approveState.status}
-            error={approveState.error}
-          />
-        </details>
-      </div>
+          </details>
+        </div>
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
+from app.domain.statuses import AssetStatus, PostStatus, ScheduleStatus
 
 """
 Core database models for Lorewell.
@@ -91,11 +92,18 @@ class Asset(Base):
     display_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     media_type: Mapped[str] = mapped_column(String(20))
 
+    captured_at_guess: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    captured_at_guess_source: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    captured_at_guess_confidence: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    captured_at_guess_matched_text: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+
     vision_summary_generated: Mapped[str | None] = mapped_column(Text, nullable=True)
     accessibility_text_generated: Mapped[str | None] = mapped_column(Text, nullable=True)
     accessibility_text_final: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    analysis_status: Mapped[str] = mapped_column(String(30), default="pending")
+    analysis_status: Mapped[str] = mapped_column(String(30), default=AssetStatus.PENDING)
     analysis_error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     analysis_user_correction: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -162,7 +170,7 @@ class Post(Base):
     draft_hashtags_current: Mapped[str | None] = mapped_column(Text, nullable=True)
     draft_accessibility_current: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    status: Mapped[str] = mapped_column(String(30), default="draft")
+    status: Mapped[str] = mapped_column(String(30), default=PostStatus.DRAFT)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
@@ -259,7 +267,7 @@ class Schedule(Base):
     publish_at: Mapped[datetime] = mapped_column(DateTime, index=True)
     publish_timezone: Mapped[str] = mapped_column(String(100), default="UTC")
 
-    status: Mapped[str] = mapped_column(String(30), default="scheduled")
+    status: Mapped[str] = mapped_column(String(30), default=ScheduleStatus.SCHEDULED)
     published_instagram_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     failure_acknowledged: Mapped[bool] = mapped_column(Boolean, default=False)

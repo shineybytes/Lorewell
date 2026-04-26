@@ -4,7 +4,7 @@ def test_generate_post_accepts_seed_caption(client, mocker, create_event, create
     post_id = create_post(event_id=event_id, asset_id=asset_id)
 
     mocker.patch(
-        "app.main.generate_caption_package",
+        "app.services.posts.generate_caption_package",
         return_value={
             "caption_option_1": "Seeded option 1",
             "caption_option_2": "Seeded option 2",

@@ -156,13 +156,23 @@ export function deleteAsset(assetId: number) {
     method: "DELETE",
   });
 }
-export function uploadAssetNoEvent(file: File): Promise<UploadAssetResponse> {
+
+export function uploadAssetNoEvent(
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<UploadAssetResponse> {
   return new Promise((resolve, reject) => {
     const formData = new FormData();
     formData.append("file", file);
 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${API_BASE}/assets/upload`);
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable || !onProgress) return;
+      const percent = Math.round((event.loaded / event.total) * 100);
+      onProgress(percent);
+    };
 
     xhr.onload = () => {
       let body: unknown = null;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { AssetRecord } from "../types/api";
 import { buildMediaUrl } from "../api/assets";
 
@@ -7,12 +7,26 @@ type AssetPreviewProps = {
   compact?: boolean;
 };
 
+function assetAltText(asset: AssetRecord) {
+  return (
+    asset.accessibility_text_final ||
+    asset.accessibility_text_generated ||
+    asset.display_name ||
+    `Asset ${asset.id}`
+  );
+}
+
 export default function AssetPreview({
   asset,
   compact = false,
 }: AssetPreviewProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const mediaUrl = buildMediaUrl(asset.file_path);
+
+  const mediaUrl = useMemo(
+    () => buildMediaUrl(asset.file_path),
+    [asset.file_path],
+  );
+  const altText = useMemo(() => assetAltText(asset), [asset]);
 
   return (
     <>
@@ -20,16 +34,15 @@ export default function AssetPreview({
         type="button"
         className={`asset-preview-wrapper ${compact ? "compact" : ""}`}
         onClick={() => setIsOpen(true)}
+        aria-label={`Open preview for ${altText}`}
       >
         {asset.media_type === "image" ? (
           <img
             className="asset-preview"
             src={mediaUrl}
-            alt={
-              asset.accessibility_text_final ||
-              asset.accessibility_text_generated ||
-              `Asset ${asset.id}`
-            }
+            alt={altText}
+            loading="lazy"
+            decoding="async"
           />
         ) : (
           <video
@@ -37,7 +50,8 @@ export default function AssetPreview({
             src={mediaUrl}
             muted
             playsInline
-            preload="metadata"
+            preload="none"
+            aria-label={altText}
           />
         )}
       </button>
@@ -52,21 +66,21 @@ export default function AssetPreview({
               type="button"
               className="asset-preview-close"
               onClick={() => setIsOpen(false)}
+              aria-label="Close preview"
             >
               ✕
             </button>
 
             {asset.media_type === "image" ? (
-              <img
-                src={mediaUrl}
-                alt={
-                  asset.accessibility_text_final ||
-                  asset.accessibility_text_generated ||
-                  `Asset ${asset.id}`
-                }
-              />
+              <img src={mediaUrl} alt={altText} />
             ) : (
-              <video src={mediaUrl} controls autoPlay playsInline />
+              <video
+                src={mediaUrl}
+                controls
+                autoPlay
+                playsInline
+                preload="metadata"
+              />
             )}
           </div>
         </div>
