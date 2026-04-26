@@ -2,7 +2,6 @@ import os
 from contextlib import asynccontextmanager
 from datetime import UTC
 from pathlib import Path
-from zoneinfo import ZoneInfo, available_timezones
 
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -78,6 +77,9 @@ from app.services.schedules import (
     retry_schedule_record,
     toggle_schedule_acknowledged,
 )
+
+from app.services.approved_posts import list_approved_post_records
+from app.services.time import convert_local_time_to_utc, list_available_timezones
 
 
 @asynccontextmanager
@@ -345,29 +347,7 @@ def fork_approved_post_to_draft(
 
 @app.get("/approved-posts")
 def list_approved_posts(db: Session = Depends(get_db)):
-    approved_posts = db.query(ApprovedPost).all()
-
-    results = []
-    for a in approved_posts:
-        asset = db.query(Asset).filter(Asset.id == a.selected_asset_id).first()
-
-        results.append(
-            {
-                "id": a.id,
-                "post_id": a.post_id,
-                "selected_asset_id": a.selected_asset_id,
-                "caption_final": a.caption_final,
-                "hashtags_final": a.hashtags_final.split()
-                if a.hashtags_final
-                else [],
-                "accessibility_text": a.accessibility_text,
-                "status": "approved",
-                "asset_file_path": asset.file_path if asset else None,
-                "asset_media_type": asset.media_type if asset else None,
-            }
-        )
-
-    return results
+    return list_approved_post_records(db)
 
 
 # =========================
@@ -436,33 +416,12 @@ def delete_schedule(schedule_id: int, db: Session = Depends(get_db)):
 
 @app.get("/timezones")
 def list_timezones():
-    return sorted(
-        tz for tz in available_timezones()
-        if "/" in tz and not tz.startswith("Etc/")
-    )
+    return list_available_timezones()
 
 
 @app.post("/time/convert", response_model=TimeConvertResponse)
 def convert_time(payload: TimeConvertRequest):
-    if payload.local_datetime.tzinfo is not None:
-        raise HTTPException(
-            status_code=400,
-            detail="local_datetime must not include a timezone or a Z suffix",
-        )
-
-    try:
-        tz = ZoneInfo(payload.timezone)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid timezone")
-
-    local_dt = payload.local_datetime.replace(tzinfo=tz)
-    utc_dt = local_dt.astimezone(UTC)
-
-    return TimeConvertResponse(
-        local_datetime=payload.local_datetime.isoformat(),
-        timezone=payload.timezone,
-        utc_datetime=utc_dt.replace(tzinfo=None).isoformat(),
-    )
+    return convert_local_time_to_utc(payload)
 
 
 # =========================
